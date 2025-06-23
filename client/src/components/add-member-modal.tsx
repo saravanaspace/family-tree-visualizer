@@ -74,8 +74,10 @@ export default function AddMemberModal({
       console.log('Creating member:', data);
       console.log('Related member ID:', relatedMemberId);
       
-      const newMember = await apiRequest('POST', '/api/family-members', data);
-      console.log('New member created:', newMember);
+      const response = await apiRequest('POST', '/api/family-members', data);
+      const newMember = await response.json();
+      console.log('New member created with full response:', newMember);
+      console.log('New member ID:', newMember?.id);
       
       // Create relationship if there's a related member
       if (relatedMemberId && newMember?.id) {
@@ -91,7 +93,8 @@ export default function AddMemberModal({
           console.log('Creating relationship:', relationshipData);
           
           try {
-            const relationship = await apiRequest('POST', '/api/relationships', relationshipData);
+            const response = await apiRequest('POST', '/api/relationships', relationshipData);
+            const relationship = await response.json();
             console.log('Relationship created successfully:', relationship);
           } catch (error) {
             console.error('Failed to create relationship:', error);

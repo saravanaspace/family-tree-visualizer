@@ -36,7 +36,8 @@ export default function FamilyTreeCanvas({
 
   const updatePositionMutation = useMutation({
     mutationFn: async ({ id, x, y }: { id: number; x: number; y: number }) => {
-      return apiRequest('PATCH', `/api/family-members/${id}/position`, { x, y });
+      const response = await apiRequest('PATCH', `/api/family-members/${id}/position`, { x, y });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/family-tree'] });

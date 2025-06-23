@@ -70,7 +70,8 @@ export default function ConnectMembersModal({
 
   const createRelationshipMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      return apiRequest('POST', '/api/relationships', data);
+      const response = await apiRequest('POST', '/api/relationships', data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/family-tree'] });
