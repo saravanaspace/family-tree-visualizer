@@ -122,7 +122,7 @@ export default function AddMemberModal({
       case 'mother':
         return { type: 'parent', from: 'new', to: 'related' };
       case 'spouse':
-        return { type: 'spouse', from: 'new', to: 'related' };
+        return { type: 'spouse', from: 'related', to: 'new' };
       default:
         return null;
     }

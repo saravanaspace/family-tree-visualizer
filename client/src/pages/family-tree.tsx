@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useFamilyTree } from "@/hooks/use-family-tree";
 import FamilyTreeCanvas from "@/components/family-tree-canvas";
+import TimelineView from "@/components/timeline-view";
 import SidebarControls from "@/components/sidebar-controls";
 import ZoomControls from "@/components/zoom-controls";
 import AddMemberModal from "@/components/add-member-modal";
 import ConnectMembersModal from "@/components/connect-members-modal";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Menu, TreePine, Clock } from "lucide-react";
 
 export default function FamilyTree() {
   const { data: familyTree, isLoading } = useFamilyTree();
@@ -16,6 +18,7 @@ export default function FamilyTree() {
   const [memberType, setMemberType] = useState<string>("");
   const [relatedMemberId, setRelatedMemberId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeView, setActiveView] = useState<"tree" | "timeline">("tree");
   const [scale, setScale] = useState(1);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
@@ -156,6 +159,22 @@ export default function FamilyTree() {
         <Menu className="h-4 w-4" />
       </Button>
 
+      {/* View Toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "tree" | "timeline")}>
+          <TabsList className="bg-white shadow-lg">
+            <TabsTrigger value="tree" className="flex items-center space-x-2">
+              <TreePine className="h-4 w-4" />
+              <span>Tree View</span>
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="flex items-center space-x-2">
+              <Clock className="h-4 w-4" />
+              <span>Timeline</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       {/* Sidebar */}
       <div className={`fixed left-0 top-0 w-80 h-full bg-white shadow-xl z-40 transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -169,28 +188,36 @@ export default function FamilyTree() {
         />
       </div>
 
-      {/* Main Canvas Area */}
+      {/* Main Content Area */}
       <div className="ml-0 md:ml-80 min-h-screen relative">
-        <ZoomControls
-          onZoomIn={() => handleZoom(1.2)}
-          onZoomOut={() => handleZoom(0.8)}
-          onResetZoom={handleResetZoom}
-        />
+        {activeView === "tree" && (
+          <>
+            <ZoomControls
+              onZoomIn={() => handleZoom(1.2)}
+              onZoomOut={() => handleZoom(0.8)}
+              onResetZoom={handleResetZoom}
+            />
 
-        <FamilyTreeCanvas
-          familyTree={familyTree}
-          selectedMemberId={selectedMemberId}
-          onMemberSelect={setSelectedMemberId}
-          onAddMember={handleAddMember}
-          scale={scale}
-          panX={panX}
-          panY={panY}
-          onScaleChange={setScale}
-          onPanChange={(x, y) => {
-            setPanX(x);
-            setPanY(y);
-          }}
-        />
+            <FamilyTreeCanvas
+              familyTree={familyTree}
+              selectedMemberId={selectedMemberId}
+              onMemberSelect={setSelectedMemberId}
+              onAddMember={handleAddMember}
+              scale={scale}
+              panX={panX}
+              panY={panY}
+              onScaleChange={setScale}
+              onPanChange={(x, y) => {
+                setPanX(x);
+                setPanY(y);
+              }}
+            />
+          </>
+        )}
+        
+        {activeView === "timeline" && (
+          <TimelineView familyTree={familyTree} />
+        )}
       </div>
 
       {/* Add Member Modal */}
