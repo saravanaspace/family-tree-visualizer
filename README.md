@@ -1,6 +1,6 @@
 # Family Tree Visualizer
 
-An interactive web application for creating, visualizing, and managing family trees with a modern, user-friendly interface.
+An interactive web application for creating, visualizing, and managing family trees with a modern, user-friendly interface and persistent storage.
 
 ## Features
 
@@ -16,6 +16,8 @@ An interactive web application for creating, visualizing, and managing family tr
   - Auto-align feature for better organization
 - **Responsive Design**: Works on both desktop and mobile devices
 - **Real-time Updates**: Changes are reflected immediately using React Query
+- **Persistent Storage**: PostgreSQL database for reliable data storage
+- **Data Seeding**: Sample family data available for testing and demonstration
 
 ## Tech Stack
 
@@ -29,7 +31,13 @@ An interactive web application for creating, visualizing, and managing family tr
 - **Backend**:
   - Node.js server
   - RESTful API endpoints
-  - In-memory storage with TypeScript interfaces
+  - PostgreSQL database with Drizzle ORM
+  - TypeScript for type safety
+
+- **Testing**:
+  - Vitest for unit testing
+  - Test database support
+  - Comprehensive storage layer tests
 
 ## Project Structure
 
@@ -42,22 +50,59 @@ An interactive web application for creating, visualizing, and managing family tr
 │   │   └── pages/      # Page components
 ├── server/             # Backend server
 │   ├── routes.ts       # API routes
-│   └── storage.ts      # Data storage implementation
-└── shared/             # Shared TypeScript schemas
+│   ├── storage.ts      # PostgreSQL storage implementation
+│   ├── seed.ts        # Database seeding script
+│   └── __tests__/     # Test files
+├── shared/            # Shared TypeScript schemas
+└── migrations/        # Database migrations
 ```
 
 ## Getting Started
 
 1. Clone the repository
+
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Start the development server:
+
+3. Set up PostgreSQL:
+   - Install PostgreSQL if not already installed
+   - Create a database named 'familytree'
+   - Set up environment variables in .env:
+     ```
+     DATABASE_URL="postgres://postgres:postgres@localhost:5432/familytree"
+     ```
+
+4. Run database migrations:
+   ```bash
+   npm run db:push
+   ```
+
+5. (Optional) Seed sample data:
+   ```bash
+   npx tsx server/seed.ts
+   ```
+
+6. Start the development server:
    ```bash
    npm run dev
    ```
-4. Open http://localhost:5000 in your browser
+
+7. Open http://localhost:5000 in your browser
+
+## Development
+
+### Testing
+Run the test suite:
+```bash
+npm test
+```
+
+Run with coverage:
+```bash
+npm run test:coverage
+```
 
 ## Key Components
 
@@ -91,3 +136,15 @@ An interactive web application for creating, visualizing, and managing family tr
 - Responsive design
 - Touch-friendly controls
 - Collapsible sidebar for mobile devices
+
+## Data Persistence
+
+The application uses PostgreSQL for data storage with the following features:
+- Reliable data persistence across server restarts
+- Efficient querying with Drizzle ORM
+- Automated database migrations
+- Test database support for development
+
+### Database Schema
+- Family Members: Stores individual family member information
+- Relationships: Manages connections between family members (parent-child, spouse)
