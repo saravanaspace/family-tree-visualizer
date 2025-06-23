@@ -71,17 +71,26 @@ export default function AddMemberModal({
 
   const createMemberMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      console.log('Creating member:', data);
+      console.log('Related member ID:', relatedMemberId);
+      
       const newMember = await apiRequest('POST', '/api/family-members', data);
+      console.log('New member created:', newMember);
       
       // Create relationship if there's a related member
       if (relatedMemberId && newMember.id) {
         const relationshipType = getRelationshipType(memberType);
+        console.log('Relationship type:', relationshipType);
+        
         if (relationshipType) {
-          await apiRequest('POST', '/api/relationships', {
+          const relationshipData = {
             fromMemberId: relationshipType.from === 'new' ? newMember.id : relatedMemberId,
             toMemberId: relationshipType.to === 'new' ? newMember.id : relatedMemberId,
             type: relationshipType.type
-          });
+          };
+          console.log('Creating relationship:', relationshipData);
+          
+          await apiRequest('POST', '/api/relationships', relationshipData);
         }
       }
       

@@ -4,6 +4,7 @@ import FamilyTreeCanvas from "@/components/family-tree-canvas";
 import SidebarControls from "@/components/sidebar-controls";
 import ZoomControls from "@/components/zoom-controls";
 import AddMemberModal from "@/components/add-member-modal";
+import ConnectMembersModal from "@/components/connect-members-modal";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 
@@ -11,6 +12,7 @@ export default function FamilyTree() {
   const { data: familyTree, isLoading } = useFamilyTree();
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [memberType, setMemberType] = useState<string>("");
   const [relatedMemberId, setRelatedMemberId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -72,6 +74,7 @@ export default function FamilyTree() {
         <SidebarControls
           familyTree={familyTree}
           onAddMember={handleAddMember}
+          onConnectMembers={() => setConnectModalOpen(true)}
           selectedMemberId={selectedMemberId}
         />
       </div>
@@ -101,6 +104,12 @@ export default function FamilyTree() {
         onOpenChange={setModalOpen}
         memberType={memberType}
         relatedMemberId={relatedMemberId}
+      />
+
+      <ConnectMembersModal
+        open={connectModalOpen}
+        onOpenChange={setConnectModalOpen}
+        familyTree={familyTree}
       />
 
       {/* Mobile overlay */}

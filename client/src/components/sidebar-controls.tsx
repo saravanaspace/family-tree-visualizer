@@ -7,19 +7,22 @@ import {
   Baby,
   Users,
   Activity,
-  HeartHandshake
+  HeartHandshake,
+  Link
 } from "lucide-react";
 import type { FamilyTreeData } from "@shared/schema";
 
 interface SidebarControlsProps {
   familyTree?: FamilyTreeData;
   onAddMember: (type: string) => void;
+  onConnectMembers: () => void;
   selectedMemberId: number | null;
 }
 
 export default function SidebarControls({
   familyTree,
   onAddMember,
+  onConnectMembers,
   selectedMemberId
 }: SidebarControlsProps) {
   const calculateStats = () => {
@@ -89,6 +92,14 @@ export default function SidebarControls({
         >
           <Baby className="w-4 h-4" />
           <span>Add Child</span>
+        </Button>
+
+        <Button
+          onClick={onConnectMembers}
+          className="w-full bg-purple-500 hover:bg-purple-600 text-white p-3 h-auto flex items-center justify-center space-x-2 transition-transform hover:scale-105"
+        >
+          <Link className="w-4 h-4" />
+          <span>Connect Members</span>
         </Button>
       </div>
 
