@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useFamilyTree } from "@/hooks/use-family-tree";
 import FamilyTreeCanvas from "@/components/family-tree-canvas";
 import SidebarControls from "@/components/sidebar-controls";

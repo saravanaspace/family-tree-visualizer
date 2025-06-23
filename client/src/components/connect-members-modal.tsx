@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,9 +53,20 @@ export default function ConnectMembersModal({
     defaultValues: {
       fromMemberId: 0,
       toMemberId: 0,
-      type: "parent",
+      type: "parent" as const,
     },
   });
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        fromMemberId: 0,
+        toMemberId: 0,
+        type: "parent" as const,
+      });
+    }
+  }, [open, form]);
 
   const createRelationshipMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
