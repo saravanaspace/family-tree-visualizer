@@ -46,11 +46,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create relationship
   app.post("/api/relationships", async (req, res) => {
     try {
+      console.log('Creating relationship with data:', req.body);
       const relationshipData = insertRelationshipSchema.parse(req.body);
+      console.log('Parsed relationship data:', relationshipData);
       const newRelationship = await storage.createRelationship(relationshipData);
+      console.log('Created relationship:', newRelationship);
       res.json(newRelationship);
     } catch (error) {
-      res.status(400).json({ message: "Invalid relationship data" });
+      console.error('Error creating relationship:', error);
+      res.status(400).json({ message: "Invalid relationship data", error: (error as Error)?.message || 'Unknown error' });
     }
   });
 

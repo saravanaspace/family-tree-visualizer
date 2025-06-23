@@ -78,7 +78,7 @@ export default function AddMemberModal({
       console.log('New member created:', newMember);
       
       // Create relationship if there's a related member
-      if (relatedMemberId && newMember.id) {
+      if (relatedMemberId && newMember?.id) {
         const relationshipType = getRelationshipType(memberType);
         console.log('Relationship type:', relationshipType);
         
@@ -90,7 +90,13 @@ export default function AddMemberModal({
           };
           console.log('Creating relationship:', relationshipData);
           
-          await apiRequest('POST', '/api/relationships', relationshipData);
+          try {
+            const relationship = await apiRequest('POST', '/api/relationships', relationshipData);
+            console.log('Relationship created successfully:', relationship);
+          } catch (error) {
+            console.error('Failed to create relationship:', error);
+            // Still continue even if relationship creation fails
+          }
         }
       }
       
