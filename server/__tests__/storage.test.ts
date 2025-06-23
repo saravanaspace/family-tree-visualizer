@@ -56,6 +56,111 @@ describe('PostgresStorage', () => {
       const tree = await storage.getFamilyTree();
       expect(tree.members.find(m => m.id === member.id)).toBeUndefined();
     });
+
+    describe('Delete Family Member', () => {
+      it('should delete a family member and their relationships', async () => {
+        // Create a family structure
+        const father = await storage.createFamilyMember({
+          name: 'John Smith',
+          type: 'father',
+          x: 0,
+          y: 0
+        });
+
+        const mother = await storage.createFamilyMember({
+          name: 'Jane Smith',
+          type: 'mother',
+          x: 100,
+          y: 0
+        });
+
+        const child = await storage.createFamilyMember({
+          name: 'Jimmy Smith',
+          type: 'child',
+          x: 50,
+          y: 100
+        });
+
+        // Create relationships
+        await storage.createRelationship({
+          fromMemberId: father.id,
+          toMemberId: child.id,
+          type: 'parent'
+        });
+
+        await storage.createRelationship({
+          fromMemberId: mother.id,
+          toMemberId: child.id,
+          type: 'parent'
+        });
+
+        await storage.createRelationship({
+          fromMemberId: father.id,
+          toMemberId: mother.id,
+          type: 'spouse'
+        });
+
+        // Initial state verification
+        let tree = await storage.getFamilyTree();
+        expect(tree.members).toHaveLength(3);
+        expect(tree.relationships).toHaveLength(3);
+
+        // Delete the father
+        await storage.deleteFamilyMember(father.id);
+
+        // Verify state after deletion
+        tree = await storage.getFamilyTree();
+        expect(tree.members).toHaveLength(2);
+        expect(tree.relationships).toHaveLength(1); // Only mother-child relationship should remain
+        expect(tree.members.find(m => m.id === father.id)).toBeUndefined();
+        expect(tree.relationships.every(r => r.fromMemberId !== father.id && r.toMemberId !== father.id)).toBe(true);
+      });
+
+      it('should handle deleting a member with no relationships', async () => {
+        const member = await storage.createFamilyMember({
+          name: 'Solo Member',
+          type: 'child',
+          x: 0,
+          y: 0
+        });
+
+        let tree = await storage.getFamilyTree();
+        expect(tree.members).toHaveLength(1);
+
+        await storage.deleteFamilyMember(member.id);
+
+        tree = await storage.getFamilyTree();
+        expect(tree.members).toHaveLength(0);
+        expect(tree.relationships).toHaveLength(0);
+      });
+
+      it('should not affect other members when deleting one member', async () => {
+        const member1 = await storage.createFamilyMember({
+          name: 'Member 1',
+          type: 'child',
+          x: 0,
+          y: 0
+        });
+
+        const member2 = await storage.createFamilyMember({
+          name: 'Member 2',
+          type: 'child',
+          x: 100,
+          y: 0
+        });
+
+        await storage.deleteFamilyMember(member1.id);
+
+        const tree = await storage.getFamilyTree();
+        expect(tree.members).toHaveLength(1);
+        expect(tree.members[0].id).toBe(member2.id);
+      });
+
+      it('should throw error when deleting non-existent member', async () => {
+        await expect(storage.deleteFamilyMember(999))
+          .rejects.toThrow('Family member not found');
+      });
+    });
   });
 
   describe('Relationships', () => {

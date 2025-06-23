@@ -16,7 +16,8 @@ import {
   Calendar,
   MapPin,
   MoreVertical,
-  Plus
+  Plus,
+  Trash2
 } from "lucide-react";
 import type { FamilyMember } from "@shared/schema";
 
@@ -26,6 +27,7 @@ interface FamilyMemberCardProps {
   onSelect: () => void;
   onPositionChange: (id: number, x: number, y: number) => void;
   onAddMember: (type: string, relatedMemberId: number) => void;
+  onDelete: (id: number) => void;
 }
 
 const memberTypeConfig = {
@@ -56,7 +58,8 @@ export default function FamilyMemberCard({
   isSelected,
   onSelect,
   onPositionChange,
-  onAddMember
+  onAddMember,
+  onDelete
 }: FamilyMemberCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -173,6 +176,17 @@ export default function FamilyMemberCard({
                   </DropdownMenuItem>
                 );
               })}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(member.id);
+                }}
+                className="cursor-pointer text-red-600"
+              >
+                <Trash2 className="mr-2 h-3 w-3" />
+                Delete Member
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

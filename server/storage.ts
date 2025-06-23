@@ -61,6 +61,15 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteFamilyMember(id: number): Promise<void> {
+    // Check if member exists first
+    const member = await db.select()
+      .from(familyMembers)
+      .where(eq(familyMembers.id, id));
+
+    if (member.length === 0) {
+      throw new Error('Family member not found');
+    }
+
     // Delete related relationships first (due to foreign key constraints)
     await db.delete(relationships)
       .where(eq(relationships.fromMemberId, id))

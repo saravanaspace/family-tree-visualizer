@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import FamilyMemberCard from "./family-member-card";
 import type { FamilyTreeData } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface FamilyTreeCanvasProps {
   familyTree?: FamilyTreeData;
@@ -30,6 +31,7 @@ export default function FamilyTreeCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
@@ -41,6 +43,27 @@ export default function FamilyTreeCanvas({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/family-tree'] });
+    }
+  });
+
+  const deleteMemberMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest('DELETE', `/api/family-members/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/family-tree'] });
+      onMemberSelect(null);
+      toast({
+        title: "Success",
+        description: "Family member deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete family member",
+        variant: "destructive",
+      });
     }
   });
 
@@ -185,6 +208,11 @@ export default function FamilyTreeCanvas({
             onSelect={() => onMemberSelect(member.id)}
             onPositionChange={handleMemberPositionChange}
             onAddMember={onAddMember}
+            onDelete={(id) => {
+              if (window.confirm('Are you sure you want to delete this family member? This action cannot be undone.')) {
+                deleteMemberMutation.mutate(id);
+              }
+            }}
           />
         ))}
       </div>
