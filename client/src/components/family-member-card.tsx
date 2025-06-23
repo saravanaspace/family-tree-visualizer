@@ -82,17 +82,11 @@ export default function FamilyMemberCard({
   const getAvailableActions = () => {
     const actions = [];
     
-    // Everyone can add children
-    actions.push({ type: 'child', label: 'Add Child', icon: Baby });
-    
-    // Add spouse option for everyone
+    // Everyone can add all relationship types
+    actions.push({ type: 'father', label: 'Add Father', icon: User });
+    actions.push({ type: 'mother', label: 'Add Mother', icon: UserX });
     actions.push({ type: 'spouse', label: 'Add Spouse', icon: Heart });
-    
-    // Add parent options based on member type
-    if (member.type === 'child') {
-      actions.push({ type: 'father', label: 'Add Father', icon: User });
-      actions.push({ type: 'mother', label: 'Add Mother', icon: UserX });
-    }
+    actions.push({ type: 'child', label: 'Add Child', icon: Baby });
     
     return actions;
   };

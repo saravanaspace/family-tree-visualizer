@@ -9,7 +9,8 @@ import {
   Users,
   Activity,
   HeartHandshake,
-  Link
+  Link,
+  Layout
 } from "lucide-react";
 import type { FamilyTreeData } from "@shared/schema";
 
@@ -17,6 +18,7 @@ interface SidebarControlsProps {
   familyTree?: FamilyTreeData;
   onAddMember: (type: string) => void;
   onConnectMembers: () => void;
+  onAutoAlign: () => void;
   selectedMemberId: number | null;
 }
 
@@ -24,6 +26,7 @@ export default function SidebarControls({
   familyTree,
   onAddMember,
   onConnectMembers,
+  onAutoAlign,
   selectedMemberId
 }: SidebarControlsProps) {
   const calculateStats = () => {
@@ -102,6 +105,14 @@ export default function SidebarControls({
           <Link className="w-4 h-4" />
           <span>Connect Members</span>
         </Button>
+
+        <Button
+          onClick={onAutoAlign}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white p-3 h-auto flex items-center justify-center space-x-2 transition-transform hover:scale-105"
+        >
+          <Layout className="w-4 h-4" />
+          <span>Auto Align Layout</span>
+        </Button>
       </div>
 
       {/* Instructions */}
@@ -113,11 +124,11 @@ export default function SidebarControls({
         </CardHeader>
         <CardContent>
           <ul className="text-sm text-blue-700 space-y-1">
-            <li>• Click cards to select family members</li>
-            <li>• Drag cards to reposition them</li>
+            <li>• Click three-dot menu on any card for all relationship options</li>
+            <li>• Drag cards to reposition them manually</li>
             <li>• Mouse wheel to zoom in/out</li>
             <li>• Click and drag canvas to pan</li>
-            <li>• Use three-dot menu to add relations</li>
+            <li>• Use "Auto Align Layout" to organize automatically</li>
           </ul>
         </CardContent>
       </Card>
