@@ -95,6 +95,11 @@ export default function FamilyTree() {
           scale={scale}
           panX={panX}
           panY={panY}
+          onScaleChange={setScale}
+          onPanChange={(x, y) => {
+            setPanX(x);
+            setPanY(y);
+          }}
         />
       </div>
 

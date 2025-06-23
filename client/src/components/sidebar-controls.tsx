@@ -115,8 +115,9 @@ export default function SidebarControls({
           <ul className="text-sm text-blue-700 space-y-1">
             <li>• Click cards to select family members</li>
             <li>• Drag cards to reposition them</li>
-            <li>• Use zoom controls to navigate</li>
-            <li>• Add relationships using buttons above</li>
+            <li>• Mouse wheel to zoom in/out</li>
+            <li>• Click and drag canvas to pan</li>
+            <li>• Use three-dot menu to add relations</li>
           </ul>
         </CardContent>
       </Card>

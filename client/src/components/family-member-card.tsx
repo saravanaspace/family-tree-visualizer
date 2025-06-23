@@ -135,7 +135,7 @@ export default function FamilyMemberCard({
   return (
     <div
       ref={cardRef}
-      className={`absolute cursor-move transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
+      className={`family-member-card absolute cursor-move transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
         isSelected ? 'ring-2 ring-primary ring-offset-2' : ''
       }`}
       style={{ left: member.x, top: member.y }}

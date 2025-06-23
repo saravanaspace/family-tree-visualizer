@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import FamilyMemberCard from "./family-member-card";
@@ -12,6 +12,8 @@ interface FamilyTreeCanvasProps {
   scale: number;
   panX: number;
   panY: number;
+  onScaleChange: (scale: number) => void;
+  onPanChange: (panX: number, panY: number) => void;
 }
 
 export default function FamilyTreeCanvas({
@@ -21,11 +23,16 @@ export default function FamilyTreeCanvas({
   onAddMember,
   scale,
   panX,
-  panY
+  panY,
+  onScaleChange,
+  onPanChange
 }: FamilyTreeCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
 
   const updatePositionMutation = useMutation({
     mutationFn: async ({ id, x, y }: { id: number; x: number; y: number }) => {
@@ -80,12 +87,78 @@ export default function FamilyTreeCanvas({
     updatePositionMutation.mutate({ id, x, y });
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(0.1, Math.min(3, scale * zoomFactor));
+    onScaleChange(newScale);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start panning if not clicking on a family member card
+    if ((e.target as HTMLElement).closest('.family-member-card')) {
+      return;
+    }
+    
+    e.preventDefault();
+    setIsPanning(true);
+    setLastPanPoint({ x: e.clientX, y: e.clientY });
+    onMemberSelect(null); // Deselect any selected member
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    
+    const deltaX = e.clientX - lastPanPoint.x;
+    const deltaY = e.clientY - lastPanPoint.y;
+    
+    onPanChange(panX + deltaX, panY + deltaY);
+    setLastPanPoint({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  // Add global mouse event listeners for panning
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isPanning) return;
+      
+      const deltaX = e.clientX - lastPanPoint.x;
+      const deltaY = e.clientY - lastPanPoint.y;
+      
+      onPanChange(panX + deltaX, panY + deltaY);
+      setLastPanPoint({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsPanning(false);
+    };
+
+    if (isPanning) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isPanning, lastPanPoint, panX, panY, onPanChange]);
+
   if (!familyTree) return null;
 
   return (
     <div 
       ref={containerRef}
-      className="w-full h-screen overflow-hidden relative cursor-grab active:cursor-grabbing"
+      className={`w-full h-screen overflow-hidden relative ${
+        isPanning ? 'cursor-grabbing' : 'cursor-grab'
+      }`}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
     >
       {/* SVG for connections */}
       <svg 
