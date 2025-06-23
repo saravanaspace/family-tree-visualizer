@@ -161,6 +161,59 @@ describe('PostgresStorage', () => {
           .rejects.toThrow('Family member not found');
       });
     });
+
+    describe('Update Family Member', () => {
+      it('should update family member details', async () => {
+        const member = await storage.createFamilyMember({
+          name: 'John Smith',
+          birthDate: '1990-01-01',
+          location: 'New York',
+          type: 'father',
+          x: 0,
+          y: 0
+        });
+
+        const updateData = {
+          name: 'John A. Smith',
+          birthDate: '1990-01-02',
+          location: 'Los Angeles'
+        };
+
+        const updatedMember = await storage.updateFamilyMember(member.id, updateData);
+        expect(updatedMember.name).toBe(updateData.name);
+        expect(updatedMember.birthDate).toBe(updateData.birthDate);
+        expect(updatedMember.location).toBe(updateData.location);
+        // Type and position should remain unchanged
+        expect(updatedMember.type).toBe(member.type);
+        expect(updatedMember.x).toBe(member.x);
+        expect(updatedMember.y).toBe(member.y);
+      });
+
+      it('should update partial family member details', async () => {
+        const member = await storage.createFamilyMember({
+          name: 'Jane Smith',
+          birthDate: '1992-03-15',
+          location: 'Chicago',
+          type: 'mother',
+          x: 100,
+          y: 100
+        });
+
+        // Update only name
+        const updatedMember = await storage.updateFamilyMember(member.id, {
+          name: 'Jane M. Smith'
+        });
+        expect(updatedMember.name).toBe('Jane M. Smith');
+        expect(updatedMember.birthDate).toBe(member.birthDate);
+        expect(updatedMember.location).toBe(member.location);
+        expect(updatedMember.type).toBe(member.type);
+      });
+
+      it('should throw error when updating non-existent member', async () => {
+        await expect(storage.updateFamilyMember(999, { name: 'New Name' }))
+          .rejects.toThrow('Family member not found');
+      });
+    });
   });
 
   describe('Relationships', () => {

@@ -43,6 +43,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update family member details
+  app.patch("/api/family-members/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = insertFamilyMemberSchema.partial().parse(req.body);
+      const updatedMember = await storage.updateFamilyMember(id, updateData);
+      res.json(updatedMember);
+    } catch (error) {
+      console.error('Error updating family member:', error);
+      res.status(400).json({ message: "Failed to update family member" });
+    }
+  });
+
   // Create relationship
   app.post("/api/relationships", async (req, res) => {
     try {

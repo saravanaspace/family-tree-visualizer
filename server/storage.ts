@@ -15,6 +15,7 @@ export interface IStorage {
   getFamilyTree(): Promise<FamilyTreeData>;
   createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
   updateFamilyMemberPosition(id: number, x: number, y: number): Promise<FamilyMember>;
+  updateFamilyMember(id: number, member: Partial<InsertFamilyMember>): Promise<FamilyMember>;
   createRelationship(relationship: InsertRelationship): Promise<Relationship>;
   deleteFamilyMember(id: number): Promise<void>;
 }
@@ -43,6 +44,19 @@ export class PostgresStorage implements IStorage {
   async updateFamilyMemberPosition(id: number, x: number, y: number): Promise<FamilyMember> {
     const [member] = await db.update(familyMembers)
       .set({ x, y })
+      .where(eq(familyMembers.id, id))
+      .returning();
+    
+    if (!member) {
+      throw new Error('Family member not found');
+    }
+    
+    return member;
+  }
+
+  async updateFamilyMember(id: number, memberUpdate: Partial<InsertFamilyMember>): Promise<FamilyMember> {
+    const [member] = await db.update(familyMembers)
+      .set(memberUpdate)
       .where(eq(familyMembers.id, id))
       .returning();
     

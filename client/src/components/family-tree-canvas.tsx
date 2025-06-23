@@ -2,8 +2,9 @@ import React, { useRef, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import FamilyMemberCard from "./family-member-card";
-import type { FamilyTreeData } from "@shared/schema";
+import type { FamilyTreeData, FamilyMember } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import EditMemberModal from "./edit-member-modal";
 
 interface FamilyTreeCanvasProps {
   familyTree?: FamilyTreeData;
@@ -32,6 +33,8 @@ export default function FamilyTreeCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [editMember, setEditMember] = useState<FamilyMember | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
@@ -184,7 +187,6 @@ export default function FamilyTreeCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      {/* SVG for connections */}
       <svg 
         ref={svgRef}
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
@@ -213,9 +215,20 @@ export default function FamilyTreeCanvas({
                 deleteMemberMutation.mutate(id);
               }
             }}
+            onEdit={(member) => {
+              setEditMember(member);
+              setEditModalOpen(true);
+            }}
           />
         ))}
       </div>
+
+      {/* Edit Member Modal */}
+      <EditMemberModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        member={editMember}
+      />
     </div>
   );
 }

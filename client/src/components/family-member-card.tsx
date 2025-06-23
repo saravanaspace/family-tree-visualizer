@@ -17,7 +17,8 @@ import {
   MapPin,
   MoreVertical,
   Plus,
-  Trash2
+  Trash2,
+  Edit2
 } from "lucide-react";
 import type { FamilyMember } from "@shared/schema";
 
@@ -28,6 +29,7 @@ interface FamilyMemberCardProps {
   onPositionChange: (id: number, x: number, y: number) => void;
   onAddMember: (type: string, relatedMemberId: number) => void;
   onDelete: (id: number) => void;
+  onEdit: (member: FamilyMember) => void;
 }
 
 const memberTypeConfig = {
@@ -59,7 +61,8 @@ export default function FamilyMemberCard({
   onSelect,
   onPositionChange,
   onAddMember,
-  onDelete
+  onDelete,
+  onEdit
 }: FamilyMemberCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -177,6 +180,16 @@ export default function FamilyMemberCard({
                 );
               })}
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(member);
+                }}
+                className="cursor-pointer"
+              >
+                <Edit2 className="mr-2 h-3 w-3" />
+                Edit Member
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
