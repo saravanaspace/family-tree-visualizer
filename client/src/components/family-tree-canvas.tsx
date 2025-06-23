@@ -8,6 +8,7 @@ interface FamilyTreeCanvasProps {
   familyTree?: FamilyTreeData;
   selectedMemberId: number | null;
   onMemberSelect: (id: number | null) => void;
+  onAddMember: (type: string, relatedMemberId?: number) => void;
   scale: number;
   panX: number;
   panY: number;
@@ -17,6 +18,7 @@ export default function FamilyTreeCanvas({
   familyTree,
   selectedMemberId,
   onMemberSelect,
+  onAddMember,
   scale,
   panX,
   panY
@@ -108,6 +110,7 @@ export default function FamilyTreeCanvas({
             isSelected={selectedMemberId === member.id}
             onSelect={() => onMemberSelect(member.id)}
             onPositionChange={handleMemberPositionChange}
+            onAddMember={onAddMember}
           />
         ))}
       </div>

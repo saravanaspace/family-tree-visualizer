@@ -1,6 +1,13 @@
 import React, { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { 
   User, 
   UserX, 
@@ -8,7 +15,8 @@ import {
   Baby,
   Calendar,
   MapPin,
-  MoreVertical
+  MoreVertical,
+  Plus
 } from "lucide-react";
 import type { FamilyMember } from "@shared/schema";
 
@@ -17,6 +25,7 @@ interface FamilyMemberCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onPositionChange: (id: number, x: number, y: number) => void;
+  onAddMember: (type: string, relatedMemberId: number) => void;
 }
 
 const memberTypeConfig = {
@@ -46,7 +55,8 @@ export default function FamilyMemberCard({
   member,
   isSelected,
   onSelect,
-  onPositionChange
+  onPositionChange,
+  onAddMember
 }: FamilyMemberCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -57,12 +67,34 @@ export default function FamilyMemberCard({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    // Don't start dragging if clicking on the dropdown menu
+    if ((e.target as HTMLElement).closest('[data-dropdown-menu]')) {
+      return;
+    }
     setIsDragging(true);
     setDragStart({
       x: e.clientX - member.x,
       y: e.clientY - member.y
     });
     onSelect();
+  };
+
+  const getAvailableActions = () => {
+    const actions = [];
+    
+    // Everyone can add children
+    actions.push({ type: 'child', label: 'Add Child', icon: Baby });
+    
+    // Add spouse option for everyone
+    actions.push({ type: 'spouse', label: 'Add Spouse', icon: Heart });
+    
+    // Add parent options based on member type
+    if (member.type === 'child') {
+      actions.push({ type: 'father', label: 'Add Father', icon: User });
+      actions.push({ type: 'mother', label: 'Add Mother', icon: UserX });
+    }
+    
+    return actions;
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -117,9 +149,38 @@ export default function FamilyMemberCard({
               {member.name}
             </span>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-            <MoreVertical className="h-3 w-3 text-gray-400" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0"
+                data-dropdown-menu
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3 w-3 text-gray-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              {getAvailableActions().map((action, index) => {
+                const IconComponent = action.icon;
+                return (
+                  <DropdownMenuItem
+                    key={action.type}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddMember(action.type, member.id);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Plus className="mr-2 h-3 w-3" />
+                    <IconComponent className="mr-2 h-3 w-3" />
+                    {action.label}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
         <div className="space-y-1 text-xs text-gray-600">

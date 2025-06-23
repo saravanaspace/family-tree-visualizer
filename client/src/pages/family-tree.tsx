@@ -12,6 +12,7 @@ export default function FamilyTree() {
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [memberType, setMemberType] = useState<string>("");
+  const [relatedMemberId, setRelatedMemberId] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const [panX, setPanX] = useState(0);
@@ -28,8 +29,9 @@ export default function FamilyTree() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleAddMember = (type: string) => {
+  const handleAddMember = (type: string, relatedId?: number) => {
     setMemberType(type);
+    setRelatedMemberId(relatedId || null);
     setModalOpen(true);
   };
 
@@ -86,6 +88,7 @@ export default function FamilyTree() {
           familyTree={familyTree}
           selectedMemberId={selectedMemberId}
           onMemberSelect={setSelectedMemberId}
+          onAddMember={handleAddMember}
           scale={scale}
           panX={panX}
           panY={panY}
@@ -97,7 +100,7 @@ export default function FamilyTree() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         memberType={memberType}
-        selectedMemberId={selectedMemberId}
+        relatedMemberId={relatedMemberId}
       />
 
       {/* Mobile overlay */}

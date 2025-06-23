@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,14 +31,14 @@ interface AddMemberModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   memberType: string;
-  selectedMemberId: number | null;
+  relatedMemberId: number | null;
 }
 
 export default function AddMemberModal({
   open,
   onOpenChange,
   memberType,
-  selectedMemberId
+  relatedMemberId
 }: AddMemberModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -55,9 +55,37 @@ export default function AddMemberModal({
     },
   });
 
+  // Reset form when modal opens with new member type
+  React.useEffect(() => {
+    if (open) {
+      form.reset({
+        name: "",
+        birthDate: "",
+        location: "",
+        type: memberType,
+        x: Math.random() * 400 + 200,
+        y: Math.random() * 300 + 100,
+      });
+    }
+  }, [open, memberType, form]);
+
   const createMemberMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      return apiRequest('POST', '/api/family-members', data);
+      const newMember = await apiRequest('POST', '/api/family-members', data);
+      
+      // Create relationship if there's a related member
+      if (relatedMemberId && newMember.id) {
+        const relationshipType = getRelationshipType(memberType);
+        if (relationshipType) {
+          await apiRequest('POST', '/api/relationships', {
+            fromMemberId: relationshipType.from === 'new' ? newMember.id : relatedMemberId,
+            toMemberId: relationshipType.to === 'new' ? newMember.id : relatedMemberId,
+            type: relationshipType.type
+          });
+        }
+      }
+      
+      return newMember;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/family-tree'] });
@@ -76,6 +104,20 @@ export default function AddMemberModal({
       });
     }
   });
+
+  const getRelationshipType = (type: string) => {
+    switch (type) {
+      case 'child':
+        return { type: 'parent', from: 'related', to: 'new' };
+      case 'father':
+      case 'mother':
+        return { type: 'parent', from: 'new', to: 'related' };
+      case 'spouse':
+        return { type: 'spouse', from: 'new', to: 'related' };
+      default:
+        return null;
+    }
+  };
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     createMemberMutation.mutate({
