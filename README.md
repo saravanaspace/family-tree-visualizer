@@ -145,6 +145,54 @@ The application uses PostgreSQL for data storage with the following features:
 - Automated database migrations
 - Test database support for development
 
+### Database Schema Management
+
+The project uses Drizzle ORM for database management. Follow these steps to set up and manage the database:
+
+1. **Create PostgreSQL Database**:
+   
+   Automated setup:
+   ```bash
+   npm run db:setup
+   ```
+   This command will automatically create the database if it doesn't exist.
+
+   Or manually using one of these methods:
+   ```bash
+   # Using psql
+   psql -U postgres -c "CREATE DATABASE familytree;"
+
+   # Or using createdb if you have PostgreSQL tools in your PATH
+   createdb familytree
+   ```
+   Note: If you don't have command line access, you can create the database using pgAdmin or any other PostgreSQL management tool.
+
+2. **Configure Database Connection**:
+   Make sure your database connection is configured in your `.env` file:
+   ```
+   DATABASE_URL="postgres://username:password@localhost:5432/familytree"
+   ```
+
+3. **Manage Schema** (choose one approach):
+
+   a. **Direct Schema Push** (Development):
+   ```bash
+   npm run db:push
+   ```
+   This command directly pushes schema changes to the database. Best used during development.
+
+   b. **Migration Workflow** (Production):
+   ```bash
+   # Generate migrations from schema changes
+   npm run db:generate
+
+   # Apply migrations to the database
+   npm run db:migrate
+   ```
+   This workflow is recommended for production as it provides better control over database changes and allows for rollbacks.
+
+   Note: The `db:generate` command will create new migration files only when there are schema changes detected. If your schema is already up to date, you'll see a "No schema changes, nothing to migrate" message.
+
 ### Database Schema
 - Family Members: Stores individual family member information
 - Relationships: Manages connections between family members (parent-child, spouse)
