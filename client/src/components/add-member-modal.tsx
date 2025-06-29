@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { insertFamilyMemberSchema } from "@shared/schema";
+import { insertFamilyMemberSchema, insertRelationshipSchema } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -21,11 +21,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = insertFamilyMemberSchema.extend({
-  name: z.string().min(1, "Name is required"),
-});
+  firstName: z.string().min(1, "First name is required"),
+}).partial();
 
 interface AddMemberModalProps {
   open: boolean;
@@ -33,6 +36,46 @@ interface AddMemberModalProps {
   memberType: string;
   relatedMemberId: number | null;
 }
+
+const getRelationshipConfig = (memberType: string) => {
+  // Handle compound types like 'parent-child-biological', 'child-biological'
+  const [baseType, subType] = memberType.split('-');
+  
+  switch (baseType) {
+    case 'parent':
+      return {
+        type: 'parent-child',
+        subType: subType || 'biological',
+        fromIsNew: true, // new member will be the parent
+      };
+    case 'spouse':
+      return {
+        type: 'spouse',
+        status: 'active',
+        fromIsNew: false, // existing member will be "from"
+      };
+    case 'child':
+      return {
+        type: 'parent-child',
+        subType: subType || 'biological',
+        fromIsNew: false, // existing member will be the parent
+      };
+    case 'guardian':
+      return {
+        type: 'guardian',
+        status: 'active',
+        fromIsNew: true, // new member will be the guardian
+      };
+    case 'other':
+      return {
+        type: 'other',
+        status: 'active',
+        fromIsNew: true, // new member will be "from"
+      };
+    default:
+      return null;
+  }
+};
 
 export default function AddMemberModal({
   open,
@@ -46,63 +89,60 @@ export default function AddMemberModal({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      gender: "unknown",
       birthDate: "",
-      location: "",
-      type: memberType,
+      birthPlace: "",
+      occupation: "",
+      biography: "",
+      isLiving: true,
       x: Math.random() * 400 + 200,
       y: Math.random() * 300 + 100,
     },
   });
 
-  // Reset form when modal opens with new member type
+  // Reset form when modal opens
   React.useEffect(() => {
     if (open) {
       form.reset({
-        name: "",
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        gender: "unknown",
         birthDate: "",
-        location: "",
-        type: memberType,
+        birthPlace: "",
+        occupation: "",
+        biography: "",
+        isLiving: true,
         x: Math.random() * 400 + 200,
         y: Math.random() * 300 + 100,
       });
     }
-  }, [open, memberType, form]);
+  }, [open, form]);
 
   const createMemberMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      console.log('Creating member:', data);
-      console.log('Related member ID:', relatedMemberId);
-      
       const response = await apiRequest('POST', '/api/family-members', data);
       const newMember = await response.json();
-      console.log('New member created with full response:', newMember);
-      console.log('New member ID:', newMember?.id);
       
-      // Create relationship if there's a related member
       if (relatedMemberId && newMember?.id) {
-        const relationshipType = getRelationshipType(memberType);
-        console.log('Relationship type:', relationshipType);
-        
-        if (relationshipType) {
+        const config = getRelationshipConfig(memberType);
+        if (config) {
           const relationshipData = {
-            fromMemberId: relationshipType.from === 'new' ? newMember.id : relatedMemberId,
-            toMemberId: relationshipType.to === 'new' ? newMember.id : relatedMemberId,
-            type: relationshipType.type
+            fromMemberId: config.fromIsNew ? newMember.id : relatedMemberId,
+            toMemberId: config.fromIsNew ? relatedMemberId : newMember.id,
+            type: config.type,
+            subType: config.subType,
+            status: config.status,
+            startDate: new Date().toISOString().split('T')[0]
           };
-          console.log('Creating relationship:', relationshipData);
           
-          try {
-            const response = await apiRequest('POST', '/api/relationships', relationshipData);
-            const relationship = await response.json();
-            console.log('Relationship created successfully:', relationship);
-          } catch (error) {
-            console.error('Failed to create relationship:', error);
-            // Still continue even if relationship creation fails
-          }
+          await apiRequest('POST', '/api/relationships', relationshipData);
         }
       }
-      
+
       return newMember;
     },
     onSuccess: () => {
@@ -123,53 +163,62 @@ export default function AddMemberModal({
     }
   });
 
-  const getRelationshipType = (type: string) => {
-    switch (type) {
-      case 'child':
-        return { type: 'parent', from: 'related', to: 'new' };
-      case 'father':
-      case 'mother':
-        return { type: 'parent', from: 'new', to: 'related' };
-      case 'spouse':
-        return { type: 'spouse', from: 'related', to: 'new' };
-      default:
-        return null;
-    }
-  };
-
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createMemberMutation.mutate({
+    // Convert empty birthDate string to undefined
+    const submitData = {
       ...data,
-      type: memberType,
-    });
-  };
-
-  const memberTypeLabels: Record<string, string> = {
-    father: "Father",
-    mother: "Mother", 
-    spouse: "Spouse",
-    child: "Child"
+      birthDate: data.birthDate ? data.birthDate : undefined,
+    };
+    createMemberMutation.mutate(submitData);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            Add {memberTypeLabels[memberType] || "Family Member"}
-          </DialogTitle>
+          <DialogTitle>Add New Family Member</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter first name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter last name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="name"
+              name="middleName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Middle Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
+                    <Input placeholder="Enter middle name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -178,12 +227,135 @@ export default function AddMemberModal({
 
             <FormField
               control={form.control}
-              name="birthDate"
+              name="gender"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Birth Date</FormLabel>
+                  <FormLabel>Gender</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="male" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Male</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="female" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Female</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="other" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Other</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="unknown" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Unknown</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="birthDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birth Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="birthPlace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birth Place</FormLabel>
+                    <FormControl>
+                      <Input placeholder="City, State/Country" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="isLiving"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Living Status</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {!form.watch('isLiving') && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="deathDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Death Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="deathPlace"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Death Place</FormLabel>
+                      <FormControl>
+                        <Input placeholder="City, State/Country" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            <FormField
+              control={form.control}
+              name="occupation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Occupation</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter occupation" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -192,12 +364,16 @@ export default function AddMemberModal({
 
             <FormField
               control={form.control}
-              name="location"
+              name="biography"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>Biography</FormLabel>
                   <FormControl>
-                    <Input placeholder="City, State/Country" {...field} />
+                    <Textarea 
+                      placeholder="Enter brief biography" 
+                      className="h-20"
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

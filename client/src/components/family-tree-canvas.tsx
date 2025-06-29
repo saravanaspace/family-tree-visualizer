@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import FamilyMemberCard from "./family-member-card";
-import type { FamilyTreeData, FamilyMember } from "@shared/schema";
+import type { FamilyTreeData, FamilyMember, Relationship } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import EditMemberModal from "./edit-member-modal";
 
@@ -17,6 +17,46 @@ interface FamilyTreeCanvasProps {
   onScaleChange: (scale: number) => void;
   onPanChange: (panX: number, panY: number) => void;
 }
+
+const getRelationshipStyle = (relationship: Relationship) => {
+  const baseStyle = {
+    strokeWidth: 2,
+    strokeDasharray: '',
+    color: '#94A3B8'
+  };
+
+  switch (relationship.type) {
+    case 'spouse':
+      return {
+        ...baseStyle,
+        color: relationship.status === 'active' ? '#EF4444' : '#94A3B8',
+        strokeWidth: 3,
+        strokeDasharray: relationship.status === 'divorced' ? '5,5' : ''
+      };
+    case 'parent-child':
+      return {
+        ...baseStyle,
+        color: relationship.subType === 'biological' ? '#3B82F6' : 
+               relationship.subType === 'adopted' ? '#10B981' :
+               relationship.subType === 'foster' ? '#8B5CF6' : '#94A3B8',
+        strokeDasharray: relationship.subType === 'foster' ? '5,5' : ''
+      };
+    case 'adopted':
+      return {
+        ...baseStyle,
+        color: '#10B981',
+        strokeWidth: 2
+      };
+    case 'guardian':
+      return {
+        ...baseStyle,
+        color: '#8B5CF6',
+        strokeDasharray: '5,5'
+      };
+    default:
+      return baseStyle;
+  }
+};
 
 export default function FamilyTreeCanvas({
   familyTree,
@@ -76,38 +116,85 @@ export default function FamilyTreeCanvas({
     // Clear existing connections
     svgRef.current.innerHTML = '';
 
-    // Draw connections
+    // Draw relationships
     familyTree.relationships.forEach(rel => {
       const fromMember = familyTree.members.find(m => m.id === rel.fromMemberId);
       const toMember = familyTree.members.find(m => m.id === rel.toMemberId);
 
       if (fromMember && toMember) {
-        drawConnection(fromMember, toMember, rel.type);
+        drawRelationship(fromMember, toMember, rel);
       }
     });
   }, [familyTree, scale, panX, panY]);
 
-  const drawConnection = (from: any, to: any, type: string) => {
+  const drawRelationship = (from: FamilyMember, to: FamilyMember, relationship: Relationship) => {
     const svg = svgRef.current;
     if (!svg) return;
 
+    const style = getRelationshipStyle(relationship);
+    
+    // Create a group for the relationship
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // Draw the main connection line
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     
     // Calculate connection points (center of cards)
-    const fromX = from.x + 96; // half of card width
-    const fromY = from.y + 50; // approximate center height
-    const toX = to.x + 96;
-    const toY = to.y + 50;
+    const fromX = from.x + 128; // half of card width (256px)
+    const fromY = from.y + 64; // approximate center height
+    const toX = to.x + 128;
+    const toY = to.y + 64;
 
     line.setAttribute('x1', fromX.toString());
     line.setAttribute('y1', fromY.toString());
     line.setAttribute('x2', toX.toString());
     line.setAttribute('y2', toY.toString());
-    line.setAttribute('stroke', type === 'spouse' ? '#EF4444' : '#94A3B8');
-    line.setAttribute('stroke-width', type === 'spouse' ? '3' : '2');
-    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', style.color);
+    line.setAttribute('stroke-width', style.strokeWidth.toString());
+    if (style.strokeDasharray) {
+      line.setAttribute('stroke-dasharray', style.strokeDasharray);
+    }
 
-    svg.appendChild(line);
+    group.appendChild(line);
+
+    // For parent-child relationships, add an arrow pointing to the child
+    if (relationship.type === 'parent-child' || relationship.type === 'adopted' || relationship.type === 'guardian') {
+      const angle = Math.atan2(toY - fromY, toX - fromX);
+      const arrowLength = 10;
+      const arrowWidth = 6;
+      
+      const arrowX = toX - arrowLength * Math.cos(angle);
+      const arrowY = toY - arrowLength * Math.sin(angle);
+      
+      const arrowLeftX = arrowX - arrowWidth * Math.sin(angle);
+      const arrowLeftY = arrowY + arrowWidth * Math.cos(angle);
+      const arrowRightX = arrowX + arrowWidth * Math.sin(angle);
+      const arrowRightY = arrowY - arrowWidth * Math.cos(angle);
+      
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      arrow.setAttribute('d', `M ${toX},${toY} L ${arrowLeftX},${arrowLeftY} L ${arrowRightX},${arrowRightY} Z`);
+      arrow.setAttribute('fill', style.color);
+      
+      group.appendChild(arrow);
+    }
+
+    // Add a label for relationship status or type if needed
+    if (relationship.status && relationship.status !== 'active') {
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      const midX = (fromX + toX) / 2;
+      const midY = (fromY + toY) / 2 - 10;
+      
+      text.setAttribute('x', midX.toString());
+      text.setAttribute('y', midY.toString());
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', style.color);
+      text.setAttribute('font-size', '12');
+      text.textContent = relationship.status.charAt(0).toUpperCase() + relationship.status.slice(1);
+      
+      group.appendChild(text);
+    }
+
+    svg.appendChild(group);
   };
 
   const handleMemberPositionChange = (id: number, x: number, y: number) => {

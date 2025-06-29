@@ -8,19 +8,34 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { 
-  User, 
-  UserX, 
-  Heart, 
-  Baby,
-  Calendar,
+import {
+  UserCircle2,
+  CalendarDays,
   MapPin,
   MoreVertical,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  Briefcase,
+  User,
+  UserRound,
+  Heart,
+  Baby,
+  Scroll,
+  UserCheck,
+  Users,
+  Languages,
 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { FamilyMember } from "@shared/schema";
+import { format } from "date-fns";
 
 interface FamilyMemberCardProps {
   member: FamilyMember;
@@ -32,28 +47,32 @@ interface FamilyMemberCardProps {
   onEdit: (member: FamilyMember) => void;
 }
 
-const memberTypeConfig = {
-  father: { 
+const genderConfig = {
+  male: { 
     color: 'blue-500', 
-    icon: User, 
-    label: 'Father' 
+    icon: User,
   },
-  mother: { 
+  female: { 
     color: 'pink-500', 
-    icon: UserX, 
-    label: 'Mother' 
+    icon: UserRound,
   },
-  spouse: { 
-    color: 'red-500', 
-    icon: Heart, 
-    label: 'Spouse' 
+  nonbinary: {
+    color: 'purple-500',
+    icon: UserCircle2,
   },
-  child: { 
-    color: 'green-500', 
-    icon: Baby, 
-    label: 'Child' 
+  unknown: {
+    color: 'gray-500',
+    icon: UserCircle2,
   }
 };
+
+const relationshipActions = [
+  { type: 'parent-child', label: 'Add Parent', icon: UserCircle2, subTypes: ['biological', 'adopted', 'foster'] },
+  { type: 'spouse', label: 'Add Spouse', icon: Heart },
+  { type: 'child', label: 'Add Child', icon: Baby, subTypes: ['biological', 'adopted', 'foster'] },
+  { type: 'guardian', label: 'Add Guardian', icon: UserCheck },
+  { type: 'other', label: 'Add Other Relation', icon: Users }
+];
 
 export default function FamilyMemberCard({
   member,
@@ -68,8 +87,15 @@ export default function FamilyMemberCard({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const config = memberTypeConfig[member.type as keyof typeof memberTypeConfig] || memberTypeConfig.child;
+  const config = genderConfig[member.gender as keyof typeof genderConfig] || genderConfig.unknown;
   const IconComponent = config.icon;
+
+  const colorClass = {
+    'blue-500': 'border-blue-500',
+    'pink-500': 'border-pink-500',
+    'purple-500': 'border-purple-500',
+    'gray-500': 'border-gray-500'
+  }[config.color];
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -83,18 +109,6 @@ export default function FamilyMemberCard({
       y: e.clientY - member.y
     });
     onSelect();
-  };
-
-  const getAvailableActions = () => {
-    const actions = [];
-    
-    // Everyone can add all relationship types
-    actions.push({ type: 'father', label: 'Add Father', icon: User });
-    actions.push({ type: 'mother', label: 'Add Mother', icon: UserX });
-    actions.push({ type: 'spouse', label: 'Add Spouse', icon: Heart });
-    actions.push({ type: 'child', label: 'Add Child', icon: Baby });
-    
-    return actions;
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -141,80 +155,126 @@ export default function FamilyMemberCard({
       style={{ left: member.x, top: member.y }}
       onMouseDown={handleMouseDown}
     >
-      <Card className={`w-48 p-4 bg-white border-l-4 border-${config.color}`}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <IconComponent className={`w-4 h-4 text-${config.color}`} />
-            <span className="font-semibold text-gray-800 text-sm truncate">
-              {member.name}
-            </span>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0"
-                data-dropdown-menu
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="h-3 w-3 text-gray-400" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {getAvailableActions().map((action, index) => {
-                const IconComponent = action.icon;
-                return (
-                  <DropdownMenuItem
-                    key={action.type}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddMember(action.type, member.id);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Plus className="mr-2 h-3 w-3" />
-                    <IconComponent className="mr-2 h-3 w-3" />
-                    {action.label}
+      <Card className={`w-64 p-4 bg-white border-l-4 ${colorClass}`}>
+        <div className="flex items-start space-x-3">
+          <Avatar className="w-12 h-12">
+            <AvatarImage src={member.photoUrl || ''} alt={`${member.firstName} ${member.lastName}`} />
+            <AvatarFallback>
+              {member.firstName?.[0]}{member.lastName?.[0]}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <div className="truncate">
+                <h3 className="font-semibold text-gray-900">
+                  {member.firstName} {member.middleName} {member.lastName}
+                </h3>
+                <div className="flex gap-1 flex-wrap">
+                  <Badge variant={member.isLiving ? "default" : "secondary"}>
+                    {member.isLiving ? "Living" : "Deceased"}
+                  </Badge>
+                </div>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-dropdown-menu>
+                    <MoreVertical className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {relationshipActions.map((action) => (
+                    <React.Fragment key={action.type}>
+                      {action.subTypes ? (
+                        action.subTypes.map((subType) => (
+                          <DropdownMenuItem
+                            key={`${action.type}-${subType}`}
+                            onClick={() => onAddMember(`${action.type}-${subType}`, member.id)}
+                          >
+                            <action.icon className="mr-2 h-3 w-3" />
+                            {`${action.label} (${subType})`}
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => onAddMember(action.type, member.id)}
+                        >
+                          <action.icon className="mr-2 h-3 w-3" />
+                          {action.label}
+                        </DropdownMenuItem>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  <DropdownMenuItem onClick={() => onEdit(member)}>
+                    <Edit2 className="mr-2 h-3 w-3" />
+                    Edit Details
                   </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(member);
-                }}
-                className="cursor-pointer"
-              >
-                <Edit2 className="mr-2 h-3 w-3" />
-                Edit Member
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(member.id);
-                }}
-                className="cursor-pointer text-red-600"
-              >
-                <Trash2 className="mr-2 h-3 w-3" />
-                Delete Member
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        
-        <div className="space-y-1 text-xs text-gray-600">
-          <div className="flex items-center space-x-1">
-            <Calendar className="w-3 h-3" />
-            <span>Born: {member.birthDate || 'Unknown'}</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <MapPin className="w-3 h-3" />
-            <span className="truncate">{member.location || 'Unknown'}</span>
-          </div>
-          <div className={`text-${config.color} font-medium`}>
-            {config.label}
+                  <DropdownMenuItem onClick={() => onDelete(member.id)} className="text-red-600">
+                    <Trash2 className="mr-2 h-3 w-3" />
+                    Delete Member
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="mt-2 space-y-1 text-xs text-gray-600">
+              <div className="flex items-center space-x-1">
+                <CalendarDays className="w-3 h-3" />
+                <span>
+                  {member.birthDate ? (
+                    <>
+                      {format(new Date(member.birthDate), 'MMM d, yyyy')}
+                      {member.birthPlace && ` in ${member.birthPlace}`}
+                    </>
+                  ) : (
+                    'Birth date unknown'
+                  )}
+                </span>
+              </div>
+              
+              {!member.isLiving && member.deathDate && (
+                <div className="flex items-center space-x-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>
+                    {format(new Date(member.deathDate), 'MMM d, yyyy')}
+                    {member.deathPlace && ` in ${member.deathPlace}`}
+                  </span>
+                </div>
+              )}
+
+              {member.occupation && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <div className="flex items-center space-x-1">
+                        <Briefcase className="w-3 h-3" />
+                        <span className="truncate">{member.occupation}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{member.occupation}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              {member.biography && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <div className="flex items-center space-x-1">
+                        <Scroll className="w-3 h-3" />
+                        <span className="truncate">{member.biography}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs whitespace-normal">{member.biography}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
           </div>
         </div>
       </Card>

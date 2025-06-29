@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { FamilyMember } from "@shared/schema";
 
@@ -31,7 +34,24 @@ interface EditMemberModalProps {
 }
 
 const formSchema = insertFamilyMemberSchema.extend({
-  name: z.string().min(1, "Name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  middleName: z.string().optional(),
+  lastName: z.string().optional(),
+  gender: z.enum(['male', 'female', 'other', 'unknown']),
+  birthDate: z.string().optional(),
+  birthPlace: z.string().optional(),
+  deathDate: z.string().optional(),
+  deathPlace: z.string().optional(),
+  occupation: z.string().optional(),
+  biography: z.string().optional(),
+  photoUrl: z.string().optional(),
+  isLiving: z.boolean(),
+  maidenName: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  languages: z.array(z.string()).optional(),
+  nationality: z.string().optional(),
+  currentResidence: z.string().optional(),
 }).partial();
 
 export default function EditMemberModal({
@@ -45,9 +65,24 @@ export default function EditMemberModal({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: member?.name || "",
+      firstName: member?.firstName || "",
+      middleName: member?.middleName || "",
+      lastName: member?.lastName || "",
+      gender: member?.gender || "unknown",
       birthDate: member?.birthDate || "",
-      location: member?.location || "",
+      birthPlace: member?.birthPlace || "",
+      deathDate: member?.deathDate || "",
+      deathPlace: member?.deathPlace || "",
+      occupation: member?.occupation || "",
+      biography: member?.biography || "",
+      photoUrl: member?.photoUrl || "",
+      isLiving: member?.isLiving ?? true,
+      maidenName: member?.maidenName || "",
+      email: member?.email || "",
+      phone: member?.phone || "",
+      languages: member?.languages || [],
+      nationality: member?.nationality || "",
+      currentResidence: member?.currentResidence || "",
     },
   });
 
@@ -55,9 +90,24 @@ export default function EditMemberModal({
   React.useEffect(() => {
     if (open && member) {
       form.reset({
-        name: member.name,
+        firstName: member.firstName || "",
+        middleName: member.middleName || "",
+        lastName: member.lastName || "",
+        gender: member.gender || "unknown",
         birthDate: member.birthDate || "",
-        location: member.location || "",
+        birthPlace: member.birthPlace || "",
+        deathDate: member.deathDate || "",
+        deathPlace: member.deathPlace || "",
+        occupation: member.occupation || "",
+        biography: member.biography || "",
+        photoUrl: member.photoUrl || "",
+        isLiving: member.isLiving ?? true,
+        maidenName: member.maidenName || "",
+        email: member.email || "",
+        phone: member.phone || "",
+        languages: member.languages || [],
+        nationality: member.nationality || "",
+        currentResidence: member.currentResidence || "",
       });
     }
   }, [open, member, form]);
@@ -94,21 +144,51 @@ export default function EditMemberModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Family Member</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter first name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter last name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="name"
+              name="middleName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>Middle Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
+                    <Input placeholder="Enter middle name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -117,12 +197,135 @@ export default function EditMemberModal({
 
             <FormField
               control={form.control}
-              name="birthDate"
+              name="gender"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Birth Date</FormLabel>
+                  <FormLabel>Gender</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex space-x-4"
+                    >
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="male" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Male</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="female" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Female</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="other" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Other</FormLabel>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <RadioGroupItem value="unknown" />
+                        </FormControl>
+                        <FormLabel className="font-normal">Unknown</FormLabel>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="birthDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birth Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="birthPlace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birth Place</FormLabel>
+                    <FormControl>
+                      <Input placeholder="City, State/Country" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="isLiving"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Living Status</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {!form.watch('isLiving') && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="deathDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Death Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="deathPlace"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Death Place</FormLabel>
+                      <FormControl>
+                        <Input placeholder="City, State/Country" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            <FormField
+              control={form.control}
+              name="occupation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Occupation</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter occupation" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -131,12 +334,123 @@ export default function EditMemberModal({
 
             <FormField
               control={form.control}
-              name="location"
+              name="photoUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>Photo URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter photo URL" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="biography"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Biography</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Enter brief biography" 
+                      className="h-20"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="maidenName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Maiden Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter maiden name if applicable" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="Enter email address" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter phone number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="nationality"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nationality</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter nationality" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="currentResidence"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Residence</FormLabel>
                   <FormControl>
                     <Input placeholder="City, State/Country" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="languages"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Languages</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter languages (comma separated)" 
+                      value={field.value?.join(', ')} 
+                      onChange={(e) => {
+                        const langs = e.target.value.split(',').map(lang => lang.trim()).filter(Boolean);
+                        field.onChange(langs);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
