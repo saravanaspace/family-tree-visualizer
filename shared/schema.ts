@@ -17,6 +17,7 @@ export const familyMembers = pgTable("family_members", {
   biography: text("biography"),
   photoUrl: varchar("photo_url", { length: 500 }),
   isLiving: boolean("is_living").default(true),
+  email: varchar("email", { length: 255 }),
   // Visual positioning
   x: real("x").notNull().default(0),
   y: real("y").notNull().default(0),
@@ -114,6 +115,7 @@ export const insertFamilyMemberSchema = createInsertSchema(familyMembers, {
   isLiving: z.boolean().default(true),
   x: z.number().default(0),
   y: z.number().default(0),
+  email: z.string().email().max(255).optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export const insertRelationshipSchema = createInsertSchema(relationships, {

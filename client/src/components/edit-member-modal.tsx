@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -46,12 +47,9 @@ const formSchema = insertFamilyMemberSchema.extend({
   biography: z.string().optional(),
   photoUrl: z.string().optional(),
   isLiving: z.boolean(),
-  maidenName: z.string().optional(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  languages: z.array(z.string()).optional(),
-  nationality: z.string().optional(),
-  currentResidence: z.string().optional(),
+  email: z.string().email().max(255).or(z.literal("")).optional(),
+  x: z.number().optional(),
+  y: z.number().optional(),
 }).partial();
 
 export default function EditMemberModal({
@@ -62,13 +60,15 @@ export default function EditMemberModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const allowedGenders = ["male", "female", "other", "unknown"];
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: member?.firstName || "",
       middleName: member?.middleName || "",
       lastName: member?.lastName || "",
-      gender: member?.gender || "unknown",
+      gender: allowedGenders.includes((member?.gender ?? undefined) as string) ? (member?.gender as "male" | "female" | "other" | "unknown") : undefined,
       birthDate: member?.birthDate || "",
       birthPlace: member?.birthPlace || "",
       deathDate: member?.deathDate || "",
@@ -77,12 +77,9 @@ export default function EditMemberModal({
       biography: member?.biography || "",
       photoUrl: member?.photoUrl || "",
       isLiving: member?.isLiving ?? true,
-      maidenName: member?.maidenName || "",
       email: member?.email || "",
-      phone: member?.phone || "",
-      languages: member?.languages || [],
-      nationality: member?.nationality || "",
-      currentResidence: member?.currentResidence || "",
+      x: member?.x ?? 0,
+      y: member?.y ?? 0,
     },
   });
 
@@ -93,7 +90,7 @@ export default function EditMemberModal({
         firstName: member.firstName || "",
         middleName: member.middleName || "",
         lastName: member.lastName || "",
-        gender: member.gender || "unknown",
+        gender: allowedGenders.includes((member.gender ?? undefined) as string) ? (member.gender as "male" | "female" | "other" | "unknown") : undefined,
         birthDate: member.birthDate || "",
         birthPlace: member.birthPlace || "",
         deathDate: member.deathDate || "",
@@ -102,12 +99,9 @@ export default function EditMemberModal({
         biography: member.biography || "",
         photoUrl: member.photoUrl || "",
         isLiving: member.isLiving ?? true,
-        maidenName: member.maidenName || "",
         email: member.email || "",
-        phone: member.phone || "",
-        languages: member.languages || [],
-        nationality: member.nationality || "",
-        currentResidence: member.currentResidence || "",
+        x: member.x ?? 0,
+        y: member.y ?? 0,
       });
     }
   }, [open, member, form]);
@@ -144,156 +138,121 @@ export default function EditMemberModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Family Member</DialogTitle>
+          <DialogDescription>
+            This is the modal to edit a family member's information.
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter first name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter last name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="middleName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Middle Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter middle name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="gender"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Gender</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2">
-                        <FormControl>
-                          <RadioGroupItem value="male" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Male</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2">
-                        <FormControl>
-                          <RadioGroupItem value="female" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Female</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2">
-                        <FormControl>
-                          <RadioGroupItem value="other" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Other</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2">
-                        <FormControl>
-                          <RadioGroupItem value="unknown" />
-                        </FormControl>
-                        <FormLabel className="font-normal">Unknown</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="birthDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Birth Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="birthPlace"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Birth Place</FormLabel>
-                    <FormControl>
-                      <Input placeholder="City, State/Country" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="isLiving"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel>Living Status</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {!form.watch('isLiving') && (
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Basic Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Basic Information</h3>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="deathDate"
+                  name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Death Date</FormLabel>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter first name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter last name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="middleName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Middle Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter middle name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <RadioGroupItem value="male" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Male</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <RadioGroupItem value="female" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Female</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <RadioGroupItem value="other" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Other</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <RadioGroupItem value="unknown" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Unknown</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Birth Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Birth Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="birthDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Birth Date</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -304,10 +263,10 @@ export default function EditMemberModal({
 
                 <FormField
                   control={form.control}
-                  name="deathPlace"
+                  name="birthPlace"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Death Place</FormLabel>
+                      <FormLabel>Birth Place</FormLabel>
                       <FormControl>
                         <Input placeholder="City, State/Country" {...field} />
                       </FormControl>
@@ -316,75 +275,94 @@ export default function EditMemberModal({
                   )}
                 />
               </div>
-            )}
+            </div>
 
-            <FormField
-              control={form.control}
-              name="occupation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Occupation</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter occupation" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            {/* Living Status Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Living Status</h3>
+              
+              <FormField
+                control={form.control}
+                name="isLiving"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>Living Status</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {!form.watch('isLiving') && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="deathDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Death Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="deathPlace"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Death Place</FormLabel>
+                        <FormControl>
+                          <Input placeholder="City, State/Country" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
-            />
+            </div>
 
-            <FormField
-              control={form.control}
-              name="photoUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Photo URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter photo URL" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Personal Details Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Personal Details</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="occupation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Occupation</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter occupation" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
-            <FormField
-              control={form.control}
-              name="biography"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Biography</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter brief biography" 
-                      className="h-20"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="maidenName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Maiden Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter maiden name if applicable" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Contact Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Contact Information</h3>
+              
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email (optional)</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="Enter email address" {...field} />
                     </FormControl>
@@ -392,15 +370,38 @@ export default function EditMemberModal({
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Additional Information Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">Additional Information</h3>
+              
+              <FormField
+                control={form.control}
+                name="photoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Photo URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter photo URL" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
-                name="phone"
+                name="biography"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>Biography</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter phone number" {...field} />
+                      <Textarea 
+                        placeholder="Enter brief biography" 
+                        className="h-20"
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -408,56 +409,7 @@ export default function EditMemberModal({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="nationality"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nationality</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter nationality" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="currentResidence"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Current Residence</FormLabel>
-                  <FormControl>
-                    <Input placeholder="City, State/Country" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="languages"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Languages</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Enter languages (comma separated)" 
-                      value={field.value?.join(', ')} 
-                      onChange={(e) => {
-                        const langs = e.target.value.split(',').map(lang => lang.trim()).filter(Boolean);
-                        field.onChange(langs);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex space-x-3 pt-4">
+            <div className="flex space-x-3 pt-4 border-t">
               <Button 
                 type="submit" 
                 className="flex-1"

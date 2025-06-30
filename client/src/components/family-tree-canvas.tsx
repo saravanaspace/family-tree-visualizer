@@ -78,6 +78,7 @@ export default function FamilyTreeCanvas({
   
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  const [redrawKey, setRedrawKey] = useState(0);
 
   const updatePositionMutation = useMutation({
     mutationFn: async ({ id, x, y }: { id: number; x: number; y: number }) => {
@@ -116,35 +117,91 @@ export default function FamilyTreeCanvas({
     // Clear existing connections
     svgRef.current.innerHTML = '';
 
+    // Deduplicate relationships to prevent multiple lines between same members
+    const drawnRelationships = new Set<string>();
+    
     // Draw relationships
     familyTree.relationships.forEach(rel => {
       const fromMember = familyTree.members.find(m => m.id === rel.fromMemberId);
       const toMember = familyTree.members.find(m => m.id === rel.toMemberId);
 
       if (fromMember && toMember) {
-        drawRelationship(fromMember, toMember, rel);
+        // Create a unique key for this relationship to prevent duplicates
+        const relationshipKey = `${rel.type}-${Math.min(rel.fromMemberId, rel.toMemberId)}-${Math.max(rel.fromMemberId, rel.toMemberId)}`;
+        
+        if (!drawnRelationships.has(relationshipKey)) {
+          drawnRelationships.add(relationshipKey);
+          drawRelationship(fromMember, toMember, rel);
+        }
       }
     });
-  }, [familyTree, scale, panX, panY]);
+  }, [familyTree, scale, panX, panY, redrawKey]);
 
   const drawRelationship = (from: FamilyMember, to: FamilyMember, relationship: Relationship) => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg || !familyTree) return;
 
     const style = getRelationshipStyle(relationship);
-    
+    const CARD_WIDTH = 256;
+    const CARD_HEIGHT = 128;
+
     // Create a group for the relationship
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    
+
+    let fromX, fromY, toX, toY;
+
+    if (relationship.type === 'spouse') {
+      // Center to center
+      fromX = from.x + CARD_WIDTH / 2;
+      fromY = from.y + CARD_HEIGHT / 2;
+      toX = to.x + CARD_WIDTH / 2;
+      toY = to.y + CARD_HEIGHT / 2;
+    } else if (relationship.type === 'parent-child') {
+      // Find all parents for this child
+      const parents = familyTree.relationships
+        .filter(r => r.type === 'parent-child' && r.toMemberId === to.id)
+        .map(r => familyTree.members.find(m => m.id === r.fromMemberId))
+        .filter(Boolean) as FamilyMember[];
+      // Check if both parents are spouses and horizontally aligned
+      let useMidpoint = false;
+      if (parents.length === 2) {
+        // Are they spouses?
+        const spouseRel = familyTree.relationships.find(r =>
+          r.type === 'spouse' &&
+          ((r.fromMemberId === parents[0].id && r.toMemberId === parents[1].id) ||
+           (r.fromMemberId === parents[1].id && r.toMemberId === parents[0].id))
+        );
+        // Are they horizontally aligned (y positions close)?
+        const yClose = Math.abs(parents[0].y - parents[1].y) < 20;
+        if (spouseRel && yClose) useMidpoint = true;
+      }
+      const ARROW_OFFSET = 5; // px, offset for visual connection
+      if (useMidpoint) {
+        // Draw from midpoint between bottoms of both parents
+        const p1 = parents[0];
+        const p2 = parents[1];
+        const midX = (p1.x + CARD_WIDTH / 2 + p2.x + CARD_WIDTH / 2) / 2;
+        const midY = Math.max(p1.y, p2.y) + CARD_HEIGHT; // no offset for start
+        fromX = midX;
+        fromY = midY;
+      } else {
+        // Only one parent or not a couple: draw from this parent
+        fromX = from.x + CARD_WIDTH / 2;
+        fromY = from.y + CARD_HEIGHT; // no offset for start
+      }
+      // To top center of child, but offset above the card
+      toX = to.x + CARD_WIDTH / 2;
+      toY = to.y - ARROW_OFFSET;
+    } else {
+      // Default: center to center
+      fromX = from.x + CARD_WIDTH / 2;
+      fromY = from.y + CARD_HEIGHT / 2;
+      toX = to.x + CARD_WIDTH / 2;
+      toY = to.y + CARD_HEIGHT / 2;
+    }
+
     // Draw the main connection line
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    
-    // Calculate connection points (center of cards)
-    const fromX = from.x + 128; // half of card width (256px)
-    const fromY = from.y + 64; // approximate center height
-    const toX = to.x + 128;
-    const toY = to.y + 64;
-
     line.setAttribute('x1', fromX.toString());
     line.setAttribute('y1', fromY.toString());
     line.setAttribute('x2', toX.toString());
@@ -154,7 +211,6 @@ export default function FamilyTreeCanvas({
     if (style.strokeDasharray) {
       line.setAttribute('stroke-dasharray', style.strokeDasharray);
     }
-
     group.appendChild(line);
 
     // For parent-child relationships, add an arrow pointing to the child
@@ -162,19 +218,15 @@ export default function FamilyTreeCanvas({
       const angle = Math.atan2(toY - fromY, toX - fromX);
       const arrowLength = 10;
       const arrowWidth = 6;
-      
       const arrowX = toX - arrowLength * Math.cos(angle);
       const arrowY = toY - arrowLength * Math.sin(angle);
-      
       const arrowLeftX = arrowX - arrowWidth * Math.sin(angle);
       const arrowLeftY = arrowY + arrowWidth * Math.cos(angle);
       const arrowRightX = arrowX + arrowWidth * Math.sin(angle);
       const arrowRightY = arrowY - arrowWidth * Math.cos(angle);
-      
       const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       arrow.setAttribute('d', `M ${toX},${toY} L ${arrowLeftX},${arrowLeftY} L ${arrowRightX},${arrowRightY} Z`);
       arrow.setAttribute('fill', style.color);
-      
       group.appendChild(arrow);
     }
 
@@ -183,14 +235,12 @@ export default function FamilyTreeCanvas({
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       const midX = (fromX + toX) / 2;
       const midY = (fromY + toY) / 2 - 10;
-      
       text.setAttribute('x', midX.toString());
       text.setAttribute('y', midY.toString());
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', style.color);
       text.setAttribute('font-size', '12');
       text.textContent = relationship.status.charAt(0).toUpperCase() + relationship.status.slice(1);
-      
       group.appendChild(text);
     }
 
@@ -199,6 +249,7 @@ export default function FamilyTreeCanvas({
 
   const handleMemberPositionChange = (id: number, x: number, y: number) => {
     updatePositionMutation.mutate({ id, x, y });
+    setRedrawKey(k => k + 1);
   };
 
   const handleWheel = (e: React.WheelEvent) => {

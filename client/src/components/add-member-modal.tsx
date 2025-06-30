@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -22,12 +23,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = insertFamilyMemberSchema.extend({
   firstName: z.string().min(1, "First name is required"),
+  birthDate: z.string().optional(),
+  deathDate: z.string().optional(),
 }).partial();
 
 interface AddMemberModalProps {
@@ -39,41 +41,70 @@ interface AddMemberModalProps {
 
 const getRelationshipConfig = (memberType: string) => {
   // Handle compound types like 'parent-child-biological', 'child-biological'
-  const [baseType, subType] = memberType.split('-');
+  // The format is: baseType-subType (e.g., "parent-child-biological")
+  const parts = memberType.split('-');
   
-  switch (baseType) {
-    case 'parent':
-      return {
-        type: 'parent-child',
-        subType: subType || 'biological',
-        fromIsNew: true, // new member will be the parent
-      };
-    case 'spouse':
-      return {
-        type: 'spouse',
-        status: 'active',
-        fromIsNew: false, // existing member will be "from"
-      };
-    case 'child':
-      return {
-        type: 'parent-child',
-        subType: subType || 'biological',
-        fromIsNew: false, // existing member will be the parent
-      };
-    case 'guardian':
-      return {
-        type: 'guardian',
-        status: 'active',
-        fromIsNew: true, // new member will be the guardian
-      };
-    case 'other':
-      return {
-        type: 'other',
-        status: 'active',
-        fromIsNew: true, // new member will be "from"
-      };
-    default:
-      return null;
+  if (parts.length >= 3) {
+    // Format: "parent-child-biological" -> baseType="parent-child", subType="biological"
+    const baseType = parts.slice(0, -1).join('-'); // "parent-child"
+    const subType = parts[parts.length - 1]; // "biological"
+    
+    switch (baseType) {
+      case 'parent-child':
+        return {
+          type: 'parent-child',
+          subType: subType,
+          fromIsNew: true, // new member will be the parent
+        };
+      default:
+        return null;
+    }
+  } else if (parts.length === 2) {
+    // Format: "child-biological" -> baseType="child", subType="biological"
+    const [baseType, subType] = parts;
+    
+    switch (baseType) {
+      case 'parent':
+        return {
+          type: 'parent-child',
+          subType: subType || 'biological',
+          fromIsNew: true, // new member will be the parent
+        };
+      case 'child':
+        return {
+          type: 'parent-child',
+          subType: subType || 'biological',
+          fromIsNew: false, // existing member will be the parent
+        };
+      default:
+        return null;
+    }
+  } else {
+    // Format: "spouse", "guardian", etc.
+    const baseType = parts[0];
+    
+    switch (baseType) {
+      case 'spouse':
+        return {
+          type: 'spouse',
+          status: 'active',
+          fromIsNew: false, // existing member will be "from"
+        };
+      case 'guardian':
+        return {
+          type: 'guardian',
+          status: 'active',
+          fromIsNew: true, // new member will be the guardian
+        };
+      case 'other':
+        return {
+          type: 'other',
+          status: 'active',
+          fromIsNew: true, // new member will be "from"
+        };
+      default:
+        return null;
+    }
   }
 };
 
@@ -95,8 +126,6 @@ export default function AddMemberModal({
       gender: "unknown",
       birthDate: "",
       birthPlace: "",
-      occupation: "",
-      biography: "",
       isLiving: true,
       x: Math.random() * 400 + 200,
       y: Math.random() * 300 + 100,
@@ -113,8 +142,6 @@ export default function AddMemberModal({
         gender: "unknown",
         birthDate: "",
         birthPlace: "",
-        occupation: "",
-        biography: "",
         isLiving: true,
         x: Math.random() * 400 + 200,
         y: Math.random() * 300 + 100,
@@ -177,6 +204,9 @@ export default function AddMemberModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add New Family Member</DialogTitle>
+          <DialogDescription>
+            Add a new family member to your family tree.
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -347,38 +377,6 @@ export default function AddMemberModal({
                 />
               </div>
             )}
-
-            <FormField
-              control={form.control}
-              name="occupation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Occupation</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter occupation" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="biography"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Biography</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter brief biography" 
-                      className="h-20"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="flex space-x-3 pt-4">
               <Button 

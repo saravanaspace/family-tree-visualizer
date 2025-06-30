@@ -8,6 +8,13 @@
       "when": 1750664456693,
       "tag": "0000_rich_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1751263337339,
+      "tag": "0001_cold_network",
+      "breakpoints": true
     }
   ]
 }

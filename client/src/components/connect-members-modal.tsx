@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -165,6 +166,9 @@ export default function ConnectMembersModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Connect Family Members</DialogTitle>
+          <DialogDescription>
+            Connect family members by selecting their relationship type and status.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
