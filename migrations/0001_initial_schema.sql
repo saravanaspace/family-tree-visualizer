@@ -18,6 +18,7 @@ CREATE TABLE "family_members" (
   "biography" text,
   "photo_url" varchar(500),
   "is_living" boolean DEFAULT true,
+  "email" varchar(255),
   "x" real DEFAULT 0 NOT NULL,
   "y" real DEFAULT 0 NOT NULL,
   "created_at" timestamp DEFAULT now(),
