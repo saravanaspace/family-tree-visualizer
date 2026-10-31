@@ -2,8 +2,10 @@ import type {
   FamilyMember, InsertFamilyMember,
   Relationship, InsertRelationship,
   FamilyEvent, InsertFamilyEvent,
-  FamilyTreeData,
+  FamilyTreeData, RestoreMember,
 } from "@shared/schema";
+import { wouldCreateParentCycle } from "@shared/graph";
+import { StorageError } from "./storage-error";
 import { buildSampleDataset } from "./demo-data";
 
 /** In-memory storage for demo mode. Mirrors PostgresStorage behavior; nothing is persisted. */
@@ -58,6 +60,58 @@ export class MemoryStorage {
     return this.updateFamilyMember(id, { x, y });
   }
 
+  async updateFamilyMemberPositions(positions: { id: number; x: number; y: number }[]): Promise<number> {
+    if (new Set(positions.map((p) => p.id)).size !== positions.length) {
+      throw new StorageError("INVALID", "Duplicate member ids");
+    }
+    // Validate everything first so a failure leaves all positions untouched.
+    const targets = positions.map((p) => {
+      const member = this.members.find((m) => m.id === p.id);
+      if (!member) throw new StorageError("NOT_FOUND", "Family member not found");
+      return { member, p };
+    });
+    for (const { member, p } of targets) Object.assign(member, { x: p.x, y: p.y, updatedAt: new Date() });
+    return positions.length;
+  }
+
+  async restoreFamilyMember(snapshot: RestoreMember) {
+    const { member, relationships: rels, events } = snapshot;
+    const hasMember = (id: number) => this.members.some((m) => m.id === id);
+    if (hasMember(member.id)) throw new StorageError("CONFLICT", "Family member id already exists");
+
+    const others = new Set<number>();
+    for (const r of rels) others.add(r.fromMemberId === member.id ? r.toMemberId : r.fromMemberId);
+    for (const e of events) e.memberIds.forEach((id) => id !== member.id && others.add(id));
+    Array.from(others).forEach((id) => {
+      if (!hasMember(id)) throw new StorageError("INVALID", "Snapshot references a missing member");
+    });
+    if (rels.some((r) => this.rels.some((x) => x.id === r.id))) throw new StorageError("CONFLICT", "Relationship id already exists");
+    if (events.some((e) => this.events.some((x) => x.id === e.id))) throw new StorageError("CONFLICT", "Event id already exists");
+
+    const now = new Date();
+    const memberDefaults = {
+      middleName: null, lastName: null, gender: null, birthDate: null, birthPlace: null,
+      deathDate: null, deathPlace: null, occupation: null, biography: null, photoUrl: null,
+      email: null, isLiving: true, x: 0, y: 0,
+    };
+    const relDefaults = { subType: null, startDate: null, endDate: null, status: "active", notes: null };
+    const eventDefaults = { date: null, place: null, description: null };
+
+    const restoredMember = Object.assign({}, memberDefaults, stripUndefined(member), { createdAt: now, updatedAt: now }) as unknown as FamilyMember;
+    const restoredRels = rels.map((r) => Object.assign({}, relDefaults, stripUndefined(r), { createdAt: now, updatedAt: now }) as unknown as Relationship);
+    const restoredEvents = events.map((e) => Object.assign({}, eventDefaults, stripUndefined(e), { memberIds: [...e.memberIds], createdAt: now, updatedAt: now }) as unknown as FamilyEvent);
+
+    this.members.push(restoredMember);
+    this.rels.push(...restoredRels);
+    this.events.push(...restoredEvents);
+    this.nextId = {
+      member: Math.max(this.nextId.member, member.id + 1),
+      rel: Math.max(this.nextId.rel, ...rels.map((r) => r.id + 1)),
+      event: Math.max(this.nextId.event, ...events.map((e) => e.id + 1)),
+    };
+    return { member: copyMember(restoredMember), relationships: restoredRels.map(copyRel), events: restoredEvents.map(copyEvent) };
+  }
+
   async updateFamilyMember(id: number, update: Partial<InsertFamilyMember>): Promise<FamilyMember> {
     const member = this.members.find((m) => m.id === id);
     if (!member) throw new Error("Family member not found");
@@ -69,6 +123,9 @@ export class MemoryStorage {
     const exists = (memberId: number) => this.members.some((m) => m.id === memberId);
     if (!exists(input.fromMemberId) || !exists(input.toMemberId)) {
       throw new Error('insert or update on table "relationships" violates foreign key constraint');
+    }
+    if (input.type === "parent-child" && wouldCreateParentCycle(this.rels, input.fromMemberId, input.toMemberId)) {
+      throw new StorageError("INVALID", "Relationship would create a parent-child cycle");
     }
     const duplicate = this.rels.some(
       (r) => r.fromMemberId === input.fromMemberId && r.toMemberId === input.toMemberId && r.type === input.type,

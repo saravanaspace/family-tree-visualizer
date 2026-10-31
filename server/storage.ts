@@ -10,8 +10,11 @@ import {
   type InsertRelationship,
   type FamilyEvent,
   type InsertFamilyEvent,
-  type FamilyTreeData
+  type FamilyTreeData,
+  type RestoreMember
 } from "@shared/schema";
+import { wouldCreateParentCycle } from '@shared/graph';
+import { StorageError } from './storage-error';
 import { eq, sql, inArray } from 'drizzle-orm';
 import { MemoryStorage } from './memory-storage';
 import { isDemoMode } from './demo-guard';
@@ -63,6 +66,8 @@ export interface Storage {
   getFamilyTree(): Promise<FamilyTreeData>;
   createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
   updateFamilyMemberPosition(id: number, x: number, y: number): Promise<FamilyMember>;
+  updateFamilyMemberPositions(positions: { id: number; x: number; y: number }[]): Promise<number>;
+  restoreFamilyMember(snapshot: RestoreMember): Promise<{ member: FamilyMember; relationships: Relationship[]; events: FamilyEvent[] }>;
   updateFamilyMember(id: number, update: Partial<InsertFamilyMember>): Promise<FamilyMember>;
   deleteFamilyMember(id: number): Promise<void>;
   createRelationship(relationship: InsertRelationship): Promise<Relationship>;
@@ -111,6 +116,68 @@ export class PostgresStorage implements Storage {
     return member;
   }
 
+  async updateFamilyMemberPositions(positions: { id: number; x: number; y: number }[]): Promise<number> {
+    if (new Set(positions.map((p) => p.id)).size !== positions.length) {
+      throw new StorageError('INVALID', 'Duplicate member ids');
+    }
+    return this.db.transaction(async (tx) => {
+      for (const { id, x, y } of positions) {
+        const updated = await tx.update(familyMembers).set({ x, y }).where(eq(familyMembers.id, id)).returning({ id: familyMembers.id });
+        // Throwing inside the transaction rolls back every earlier write.
+        if (!updated.length) throw new StorageError('NOT_FOUND', 'Family member not found');
+      }
+      return positions.length;
+    });
+  }
+
+  async restoreFamilyMember(snapshot: RestoreMember) {
+    const { member, relationships: rels, events } = snapshot;
+    return this.db.transaction(async (tx) => {
+      const exists = async (id: number) =>
+        (await tx.select({ id: familyMembers.id }).from(familyMembers).where(eq(familyMembers.id, id))).length > 0;
+
+      if (await exists(member.id)) throw new StorageError('CONFLICT', 'Family member id already exists');
+
+      const [restoredMember] = await tx.insert(familyMembers).values(prepareDates(member) as any).returning();
+
+      const otherIds = new Set<number>();
+      for (const r of rels) otherIds.add(r.fromMemberId === member.id ? r.toMemberId : r.fromMemberId);
+      for (const e of events) e.memberIds.forEach((id) => id !== member.id && otherIds.add(id));
+      for (const id of Array.from(otherIds)) {
+        if (!(await exists(id))) throw new StorageError('INVALID', 'Snapshot references a missing member');
+      }
+
+      const relIds = rels.map((r) => r.id);
+      const eventIds = events.map((e) => e.id);
+      if (relIds.length && (await tx.select({ id: relationships.id }).from(relationships).where(inArray(relationships.id, relIds))).length) {
+        throw new StorageError('CONFLICT', 'Relationship id already exists');
+      }
+      if (eventIds.length && (await tx.select({ id: familyEvents.id }).from(familyEvents).where(inArray(familyEvents.id, eventIds))).length) {
+        throw new StorageError('CONFLICT', 'Event id already exists');
+      }
+
+      const restoredRels = rels.length
+        ? await tx.insert(relationships).values(rels.map((r) => prepareDates(r)) as any).returning()
+        : [];
+      const restoredEvents = events.length
+        ? await tx.insert(familyEvents).values(events.map((e) => prepareDates(e)) as any).returning()
+        : [];
+
+      // Explicit ids bypass the serial sequences; move them past the restored ids.
+      for (const [table, column] of [['family_members', 'id'], ['relationships', 'id'], ['family_events', 'id']]) {
+        await tx.execute(sql.raw(
+          `SELECT setval(pg_get_serial_sequence('${table}', '${column}'), GREATEST((SELECT COALESCE(MAX(${column}), 1) FROM ${table}), nextval(pg_get_serial_sequence('${table}', '${column}')) - 1))`
+        ));
+      }
+
+      return {
+        member: parseDates(restoredMember),
+        relationships: restoredRels.map((r) => parseDates(r)),
+        events: restoredEvents.map((e) => parseDates(e)),
+      };
+    });
+  }
+
   async updateFamilyMember(id: number, memberUpdate: Partial<InsertFamilyMember>): Promise<FamilyMember> {
     const [member] = await this.db.update(familyMembers)
       .set(prepareDates(memberUpdate))
@@ -125,6 +192,12 @@ export class PostgresStorage implements Storage {
   }
 
   async createRelationship(insertRelationship: InsertRelationship): Promise<Relationship> {
+    if (insertRelationship.type === 'parent-child') {
+      const existing = await this.db.select().from(relationships).where(eq(relationships.type, 'parent-child'));
+      if (wouldCreateParentCycle(existing, insertRelationship.fromMemberId, insertRelationship.toMemberId)) {
+        throw new StorageError('INVALID', 'Relationship would create a parent-child cycle');
+      }
+    }
     const [relationship] = await this.db.insert(relationships)
       .values(prepareDates(insertRelationship))
       .returning();

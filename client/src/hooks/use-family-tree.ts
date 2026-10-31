@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { 
   FamilyTreeData, 
   InsertFamilyMember, 
@@ -8,6 +8,22 @@ import type {
   InsertFamilyEvent,
   FamilyEvent
 } from "@shared/schema";
+
+export const FAMILY_TREE_KEY = ['/api/family-tree'] as const;
+
+/**
+ * Applies `updater` to the cached tree immediately and returns a rollback that restores the exact
+ * snapshot taken beforehand. Callers run the real request and call `rollback()` if it fails.
+ */
+export async function optimisticTreeUpdate(
+  queryClient: QueryClient,
+  updater: (tree: FamilyTreeData) => FamilyTreeData,
+): Promise<() => void> {
+  await queryClient.cancelQueries({ queryKey: FAMILY_TREE_KEY });
+  const snapshot = queryClient.getQueryData<FamilyTreeData>(FAMILY_TREE_KEY);
+  if (snapshot) queryClient.setQueryData<FamilyTreeData>(FAMILY_TREE_KEY, updater(snapshot));
+  return () => queryClient.setQueryData(FAMILY_TREE_KEY, snapshot);
+}
 
 export function useFamilyTree() {
   const queryClient = useQueryClient();

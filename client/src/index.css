@@ -109,3 +109,47 @@
     transform: translateX(0);
   }
 }
+
+/* Canvas connection handles: bigger hit area on touch devices (>= 44px) */
+@media (pointer: coarse) {
+  .ftv-handle {
+    width: 44px !important;
+    height: 44px !important;
+    opacity: 1 !important;
+    background: transparent !important;
+    border: 0 !important;
+    position: absolute;
+  }
+  .ftv-handle::after {
+    content: '';
+    position: absolute;
+    inset: 16px;
+    border-radius: 9999px;
+    background: hsl(var(--primary));
+    border: 2px solid hsl(var(--background));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__edge-path,
+  .react-flow__node {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+.react-flow__node:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+
+/* Chrome (dialogs, sheets, popovers, menus) animates via data-state; honour reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  [data-state],
+  [data-radix-popper-content-wrapper] * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -16,7 +16,20 @@ export default defineConfig({
         ]
       : []),
   ],
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@xyflow/react",
+      "@dagrejs/dagre",
+      "html-to-image",
+    ],
+  },
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),

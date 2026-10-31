@@ -37,6 +37,10 @@ interface AddMemberModalProps {
   onOpenChange: (open: boolean) => void;
   memberType: string;
   relatedMemberId: number | null;
+  /** Canvas position for the new member; random near the origin when omitted. */
+  initialPosition?: { x: number; y: number } | null;
+  /** Called with the created records so callers can register undo. */
+  onCreated?: (result: { member: any; relationship?: any }) => void;
 }
 
 const getRelationshipConfig = (memberType: string) => {
@@ -112,7 +116,9 @@ export default function AddMemberModal({
   open,
   onOpenChange,
   memberType,
-  relatedMemberId
+  relatedMemberId,
+  initialPosition,
+  onCreated
 }: AddMemberModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -127,8 +133,8 @@ export default function AddMemberModal({
       birthDate: "",
       birthPlace: "",
       isLiving: true,
-      x: Math.random() * 400 + 200,
-      y: Math.random() * 300 + 100,
+      x: initialPosition?.x ?? Math.random() * 400 + 200,
+      y: initialPosition?.y ?? Math.random() * 300 + 100,
     },
   });
 
@@ -143,16 +149,17 @@ export default function AddMemberModal({
         birthDate: "",
         birthPlace: "",
         isLiving: true,
-        x: Math.random() * 400 + 200,
-        y: Math.random() * 300 + 100,
+        x: initialPosition?.x ?? Math.random() * 400 + 200,
+        y: initialPosition?.y ?? Math.random() * 300 + 100,
       });
     }
-  }, [open, form]);
+  }, [open, form, initialPosition]);
 
   const createMemberMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const response = await apiRequest('POST', '/api/family-members', data);
       const newMember = await response.json();
+      let newRelationship: any;
       
       if (relatedMemberId && newMember?.id) {
         const config = getRelationshipConfig(memberType);
@@ -166,13 +173,14 @@ export default function AddMemberModal({
             startDate: new Date().toISOString().split('T')[0]
           };
           
-          await apiRequest('POST', '/api/relationships', relationshipData);
+          newRelationship = await (await apiRequest('POST', '/api/relationships', relationshipData)).json();
         }
       }
 
-      return newMember;
+      return { member: newMember, relationship: newRelationship };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      onCreated?.(result);
       queryClient.invalidateQueries({ queryKey: ['/api/family-tree'] });
       toast({
         title: "Success",
@@ -201,7 +209,7 @@ export default function AddMemberModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[100dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Family Member</DialogTitle>
           <DialogDescription>

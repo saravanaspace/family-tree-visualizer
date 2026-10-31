@@ -23,7 +23,7 @@ Expected: batch-positions, restore, link-validation, `toFlow`, `layout`, undo-st
    Resize <768px → bottom toolbar; select a member → bottom drawer inspector.
 2. **Drag (US6, SC-009)**: At 25%, 100%, 300% zoom, drag a member — it stays under the cursor;
    edges follow live; reload confirms position saved (network tab shows one request).
-3. **Connect**: Drag from bottom handle of A to B → chooser → child link. Try A→A, duplicate, and
+3. **Connect**: Drag from the bottom handle of A to B (bottom suggests parent, top child, sides partner) → chooser → child link. Try A→A, duplicate, and
    a cycle → inline "not allowed", no request sent. Drag to empty canvas → add-person flow.
 4. **Palette**: Ctrl/Cmd+K, type a name, Enter → centered and selected. Run Auto-arrange, Fit, Export.
 5. **Undo (US7)**: Move, delete a member with relationships, Ctrl/Cmd+Z → member and links return

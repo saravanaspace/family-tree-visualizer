@@ -99,7 +99,7 @@ client/src/
 ├── features/tree-canvas/
 │   ├── TreeCanvas.tsx                  # ReactFlow wrapper, handlers, settings
 │   ├── nodes/PersonNode.tsx            # replaces family-member-card.tsx (3 detail levels, handles, quick-add)
-│   ├── nodes/UnionNode.tsx             # couple junction (derived)
+│   ├── nodes/UnionNode.tsx             # couple junction between partners' facing edges (derived)
 │   ├── edges/RelationshipEdge.tsx      # styled by type/status, labels, selectable
 │   ├── chrome/{LeftToolbar,TopBar,ZoomPanel,InspectorPanel,CommandPalette,FilterPopover,ConnectPopover}.tsx
 │   ├── hooks/{useTreeGraph,useUndoRedo,useViewportPersist,useTreeShortcuts,useCanvasSettings,useExport}.ts

@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFamilyMemberSchema, insertRelationshipSchema, insertFamilyEventSchema } from "@shared/schema";
+import { insertFamilyMemberSchema, insertRelationshipSchema, insertFamilyEventSchema, batchPositionsSchema, restoreMemberSchema } from "@shared/schema";
+import { StorageError } from "./storage-error";
 import { z } from "zod";
 import { MemoryStorage } from "./memory-storage";
 import { isLoopbackAddress } from "./demo-guard";
@@ -40,6 +41,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Invalid family member data",
         error: error instanceof z.ZodError ? error.errors : undefined
       });
+    }
+  });
+
+  // Batch-update positions (registered before the /:id routes so "positions" is never parsed as an id)
+  app.patch("/api/family-members/positions", async (req, res) => {
+    const parsed = batchPositionsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid positions data", error: parsed.error.errors });
+    }
+    try {
+      const updated = await storage.updateFamilyMemberPositions(parsed.data.positions);
+      res.json({ updated });
+    } catch (error) {
+      if (error instanceof StorageError && error.code === "NOT_FOUND") {
+        return res.status(404).json({ message: "Family member not found" });
+      }
+      res.status(500).json({ message: "Failed to update positions" });
+    }
+  });
+
+  // Restore a deleted member (original ids) with its relationships and events
+  app.post("/api/family-members/restore", async (req, res) => {
+    const parsed = restoreMemberSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid restore data", error: parsed.error.errors });
+    }
+    try {
+      res.status(201).json(await storage.restoreFamilyMember(parsed.data));
+    } catch (error) {
+      if (error instanceof StorageError) {
+        if (error.code === "CONFLICT") return res.status(409).json({ message: "Restore conflicts with existing data" });
+        if (error.code === "INVALID") return res.status(400).json({ message: "Restore data references missing members" });
+      }
+      res.status(500).json({ message: "Failed to restore family member" });
     }
   });
 

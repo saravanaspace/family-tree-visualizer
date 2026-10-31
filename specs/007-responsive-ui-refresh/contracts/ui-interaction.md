@@ -13,12 +13,12 @@ Observable behavior verified by tests and review. IDs are referenced from `tasks
 
 ## Input mappings
 
-| Input | Whiteboard scheme (default) | Alternate scheme |
-|-------|----------------------------|------------------|
-| Wheel / two-finger swipe | Pan | Zoom at pointer |
+| Input | Default scheme (scroll zooms) | Whiteboard scheme ("Scroll pans" setting) |
+|-------|------------------------------|-------------------------------------------|
+| Wheel / two-finger swipe | Zoom at pointer | Pan |
 | Ctrl/Cmd + wheel, pinch | Zoom at pointer/pinch center | Zoom |
-| Space-drag, middle-drag, hand tool | Pan | Pan |
-| Drag on empty canvas | Marquee select | Marquee select |
+| Drag on empty canvas, Space-drag, middle-drag | Pan | Pan |
+| Shift + drag on empty canvas | Marquee select | Marquee select |
 | Drag on member | Move (follows pointer ±2px at all zooms) | same |
 | One-finger drag on empty canvas (touch) | Pan | Pan |
 | Long-press | Context menu | Context menu |

@@ -503,5 +503,143 @@ describe(name, () => {
       expect(b.id).not.toBe(a.id);
     });
   });
+
+  describe('Batch positions', () => {
+    const person = (firstName: string) => storage.createFamilyMember({ firstName, x: 0, y: 0 });
+
+    it('updates every position', async () => {
+      const a = await person('A');
+      const b = await person('B');
+      const count = await storage.updateFamilyMemberPositions([
+        { id: a.id, x: 10, y: 20 },
+        { id: b.id, x: -5.5, y: 7 },
+      ]);
+      expect(count).toBe(2);
+      const { members } = await storage.getFamilyTree();
+      expect(members.find((m) => m.id === a.id)).toMatchObject({ x: 10, y: 20 });
+      expect(members.find((m) => m.id === b.id)).toMatchObject({ x: -5.5, y: 7 });
+    });
+
+    it('writes nothing when any id is unknown', async () => {
+      const a = await person('A');
+      await expect(storage.updateFamilyMemberPositions([
+        { id: a.id, x: 10, y: 20 },
+        { id: 9999, x: 1, y: 1 },
+      ])).rejects.toThrow('Family member not found');
+      const { members } = await storage.getFamilyTree();
+      expect(members[0]).toMatchObject({ x: 0, y: 0 });
+    });
+
+    it('rejects duplicate ids without writing', async () => {
+      const a = await person('A');
+      await expect(storage.updateFamilyMemberPositions([
+        { id: a.id, x: 1, y: 1 },
+        { id: a.id, x: 2, y: 2 },
+      ])).rejects.toThrow();
+      expect((await storage.getFamilyTree()).members[0]).toMatchObject({ x: 0, y: 0 });
+    });
+  });
+
+  describe('Parent-child cycles', () => {
+    const person = (firstName: string) => storage.createFamilyMember({ firstName, x: 0, y: 0 });
+    const parentOf = (from: number, to: number) =>
+      storage.createRelationship({ fromMemberId: from, toMemberId: to, type: 'parent-child' });
+
+    it('rejects a self parent-child link', async () => {
+      const a = await person('A');
+      await expect(parentOf(a.id, a.id)).rejects.toThrow('cycle');
+    });
+
+    it('rejects a link that makes a descendant an ancestor', async () => {
+      const a = await person('A');
+      const b = await person('B');
+      const c = await person('C');
+      await parentOf(a.id, b.id);
+      await parentOf(b.id, c.id);
+      await expect(parentOf(c.id, a.id)).rejects.toThrow('cycle');
+      expect((await storage.getFamilyTree()).relationships).toHaveLength(2);
+    });
+
+    it('still allows spouse links in both directions and valid parent links', async () => {
+      const a = await person('A');
+      const b = await person('B');
+      await storage.createRelationship({ fromMemberId: a.id, toMemberId: b.id, type: 'spouse' });
+      await storage.createRelationship({ fromMemberId: b.id, toMemberId: a.id, type: 'spouse' });
+      await expect(parentOf(a.id, b.id)).resolves.toBeDefined();
+    });
+  });
+
+  describe('Restore member', () => {
+    const person = (firstName: string) => storage.createFamilyMember({ firstName, x: 0, y: 0 });
+
+    it('restores a deleted member with original ids, relationships and events', async () => {
+      const parent = await person('Parent');
+      const child = await person('Child');
+      const rel = await storage.createRelationship({ fromMemberId: parent.id, toMemberId: child.id, type: 'parent-child' });
+      const event = await storage.createEvent({ type: 'birth', memberIds: [child.id, parent.id] });
+      const before = await storage.getFamilyTree();
+
+      await storage.deleteFamilyMember(child.id);
+      expect((await storage.getFamilyTree()).members).toHaveLength(1);
+
+      const restored = await storage.restoreFamilyMember({
+        member: before.members.find((m) => m.id === child.id)!,
+        relationships: [before.relationships.find((r) => r.id === rel.id)!],
+        events: [before.events.find((e) => e.id === event.id)!],
+      });
+      expect(restored.member.id).toBe(child.id);
+
+      const after = await storage.getFamilyTree();
+      expect(after.members.map((m) => m.id).sort()).toEqual([parent.id, child.id].sort());
+      expect(after.relationships.map((r) => r.id)).toEqual([rel.id]);
+      expect(after.events.map((e) => e.id)).toEqual([event.id]);
+    });
+
+    it('does not reuse the restored id for new members', async () => {
+      const a = await person('A');
+      const snapshot = (await storage.getFamilyTree()).members[0];
+      await storage.deleteFamilyMember(a.id);
+      await storage.restoreFamilyMember({ member: snapshot, relationships: [], events: [] });
+      const next = await person('Next');
+      expect(next.id).not.toBe(a.id);
+    });
+
+    it('rejects an id collision with a conflict error', async () => {
+      const a = await person('A');
+      const snapshot = (await storage.getFamilyTree()).members[0];
+      await expect(storage.restoreFamilyMember({ member: snapshot, relationships: [], events: [] }))
+        .rejects.toMatchObject({ code: 'CONFLICT' });
+      expect((await storage.getFamilyTree()).members.map((m) => m.id)).toEqual([a.id]);
+    });
+
+    it('rejects a dangling relationship and writes nothing', async () => {
+      const a = await person('A');
+      const snapshot = (await storage.getFamilyTree()).members[0];
+      await storage.deleteFamilyMember(a.id);
+      await expect(storage.restoreFamilyMember({
+        member: snapshot,
+        relationships: [{
+          id: 50, fromMemberId: a.id, toMemberId: 9999, type: 'spouse', subType: null, startDate: null,
+          endDate: null, status: 'active', notes: null, createdAt: null, updatedAt: null,
+        }],
+        events: [],
+      })).rejects.toMatchObject({ code: 'INVALID' });
+      expect((await storage.getFamilyTree()).members).toHaveLength(0);
+    });
+
+    it('rolls back when an event id collides', async () => {
+      const a = await person('A');
+      const b = await person('B');
+      const ev = await storage.createEvent({ type: 'other', memberIds: [b.id] });
+      const snapshot = (await storage.getFamilyTree()).members.find((m) => m.id === a.id)!;
+      await storage.deleteFamilyMember(a.id);
+      await expect(storage.restoreFamilyMember({
+        member: snapshot,
+        relationships: [],
+        events: [{ id: ev.id, type: 'birth', memberIds: [a.id], date: null, place: null, description: null, createdAt: null, updatedAt: null }],
+      })).rejects.toMatchObject({ code: 'CONFLICT' });
+      expect((await storage.getFamilyTree()).members.map((m) => m.id)).toEqual([b.id]);
+    });
+  });
 });
 }
