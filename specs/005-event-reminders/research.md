@@ -45,4 +45,6 @@
 
 ## Open Items
 
-- Email provider, exact lead-time defaults, and channel options confirmed in tasks.
+- Decided: email-only channel for v1; default lead time 7 days; delivery at 08:00 recipient local
+  time (window 08:00–10:00); deceased members' birthday reminders and anniversaries involving a
+  deceased partner are suppressed by default. Email provider confirmed in tasks.

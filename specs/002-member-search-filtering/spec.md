@@ -10,6 +10,13 @@
 P1 enhancement backlog in `specs/001-core-family-tree/spec.md` (FR-012), which calls for
 member search and filtering as the family tree grows.
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: Is 002 or 001 FR-012 authoritative for search scope? → A: 002. First release is name search plus
+  living-status, birth-period, and location filters; relationship and event criteria are deferred.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Find a Person by Name (Priority: P1)

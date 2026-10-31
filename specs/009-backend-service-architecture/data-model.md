@@ -25,10 +25,11 @@ handler maps — both of which downstream tasks and tests reference.
 | No duplicate equivalent relationship (same from/to/type) | Relationship create | `ConflictError` (409) | FR-006 |
 | Referenced members must exist | Relationship create/update; event create | `ValidationError` (400) or `NotFoundError` (404) for missing target | FR-006 |
 | `relationship.type` ∈ allowed set; `relationship.status` ∈ allowed set | Relationship create/update | `ValidationError` (400) | FR-006 |
+| A parent-child relationship must not create a cycle | Relationship create/update | `ValidationError` (400) | FR-006 |
 | Input payload matches Zod schema | All write endpoints | `ValidationError` (400) with field detail | FR-007 |
 
-**Deferred (explicitly out of scope)**: parent-child cycle prevention, biological-parent count
-limits, and birth/death date sanity checks.
+**Deferred (explicitly out of scope)**: biological-parent count limits and birth/death date
+sanity checks.
 
 ### Allowed enum values (surfaced from existing usage / schema)
 

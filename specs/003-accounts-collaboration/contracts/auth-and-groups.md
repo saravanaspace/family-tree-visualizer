@@ -34,7 +34,7 @@ Rules:
 
 | Method | Path | Role required | Purpose |
 |--------|------|---------------|---------|
-| POST | `/api/groups/:id/public-share` | admin+ | Create a read-only public link |
+| POST | `/api/groups/:id/public-share` | admin+ | Create a read-only public link (optional `expiresAt`; default no expiry) |
 | DELETE | `/api/groups/:id/public-share` | admin+ | Revoke the public link |
 | GET | `/api/public/:token` | none | Read-only view excluding private data |
 

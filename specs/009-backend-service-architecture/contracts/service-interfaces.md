@@ -20,7 +20,7 @@ Signatures are indicative; exact types derive from `shared/schema.ts`.
 
 | Operation | Input | Returns | Errors |
 |-----------|-------|---------|--------|
-| `createRelationship(data: InsertRelationship)` | validated relationship | created relationship | `ValidationError` (self-relationship, invalid enum, missing member), `ConflictError` (duplicate) |
+| `createRelationship(data: InsertRelationship)` | validated relationship | created relationship | `ValidationError` (self-relationship, invalid enum, missing member, parent-child cycle), `ConflictError` (duplicate) |
 | `updateRelationship(id, data)` | id + partial | updated relationship | `NotFoundError`, `ValidationError` |
 | `deleteRelationship(id)` | id | void | `NotFoundError` |
 

@@ -3,8 +3,22 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFamilyMemberSchema, insertRelationshipSchema, insertFamilyEventSchema } from "@shared/schema";
 import { z } from "zod";
+import { MemoryStorage } from "./memory-storage";
+import { isLoopbackAddress } from "./demo-guard";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Demo mode only: restore the sample dataset. Local requests only; others see a 404.
+  if (storage instanceof MemoryStorage) {
+    const demoStorage = storage;
+    app.post("/api/demo/reset", (req, res) => {
+      if (!isLoopbackAddress(req.socket.remoteAddress)) {
+        return res.status(404).json({ message: "Not found" });
+      }
+      demoStorage.reset();
+      res.json({ message: "Demo data reset" });
+    });
+  }
+
   // Get family tree data
   app.get("/api/family-tree", async (req, res) => {
     try {

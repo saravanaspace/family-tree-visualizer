@@ -11,6 +11,19 @@ different roles so there can be multiple admins, maybe share a readable version 
 (part of a broader idea set that also included richer member profiles, event reminders, a
 Q&A assistant, and responsive UI improvements, which are tracked as separate features).
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: What is a public share link? → A: An unguessable, revocable token URL. Administrators may set an
+  optional expiry (default: no expiry); expired and revoked links expose nothing.
+- Q: What is private by default? → A: Contact and social details of living members, and any field an
+  administrator explicitly marks private. Everything else is public in a published view.
+- Q: Does 007 depend on this feature? → A: No. 007 ships first against the single shared tree; undo/redo
+  stays per-browser after 003 lands.
+- Q: When do session-cookie requirements (013 FR-004) apply? → A: From this feature onward, since sessions
+  first exist here.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Sign In to a Personal Account (Priority: P1)

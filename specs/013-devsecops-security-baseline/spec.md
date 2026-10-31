@@ -15,6 +15,18 @@ Principle VI (Security by Design). Part of a broader code-health idea set; code 
 (008), logging (011), and deployment (012) are tracked as separate features and are dependencies
 of this one.
 
+> **Audit note (2026-10-31)**: A `security-audit` skill review found this baseline not yet implemented (no `helmet`, CI, or scanning; 14 high/critical prod advisories). Findings and remediation are tracked in `specs/014-security-audit-remediation/`.
+
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: What is the "high-severity threshold"? → A: CVSS 7.0 or above (High and Critical) blocks; Medium and
+  Low are reported only.
+- Q: Who is the "owner" of a risk acceptance? → A: A named repository maintainer recorded in the
+  acceptance entry (the PR author may not accept their own finding).
+- Q: When do cookie requirements apply? → A: Once sessions exist (feature 003); see FR-004.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Block Merges That Introduce Known Vulnerabilities (Priority: P1)
@@ -158,8 +170,9 @@ security review exists and that unresolved high-severity items block completion.
   threshold.
 - **FR-003**: The repository MUST have automated secret scanning that blocks credentials, keys, and
   tokens from being committed or merged and identifies the offending location.
-- **FR-004**: The application MUST return protective security response headers by default and MUST
-  issue session cookies marked secure, http-only, and same-site.
+- **FR-004**: The application MUST return protective security response headers by default. Once
+  sessions exist (feature 003), session cookies MUST be marked secure, http-only, and same-site;
+  until then this cookie requirement is vacuously satisfied and verified when 003 lands.
 - **FR-005**: The deployable artifact MUST be scanned for known vulnerabilities before release and
   MUST fail the release on findings at or above the high-severity threshold.
 - **FR-006**: Dependencies MUST be kept current through an automated update mechanism.

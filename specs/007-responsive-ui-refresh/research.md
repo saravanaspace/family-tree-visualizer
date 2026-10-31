@@ -1,134 +1,87 @@
-# Phase 0 Research: Responsive UI Refresh
+# Research: Responsive UI Refresh & Canvas Workspace
 
-This research resolves the technical unknowns for making the existing client intuitive and
-responsive. Findings are grounded in the current implementation.
+All Technical Context unknowns resolved. Format: Decision / Rationale / Alternatives.
 
-## Current-State Findings (why the UI is "not intuitive")
+## R-1 Canvas engine
+- **Decision**: `@xyflow/react` (React Flow 12).
+- **Rationale**: Built-in pan/zoom (cursor-anchored), pinch, `panOnScroll`, marquee selection,
+  handles + `onConnect`, `MiniMap`, `fitView`, snap grid, `onlyRenderVisibleElements`, custom
+  nodes/edges, MIT licence. Maps 1:1 to `members → nodes`, `relationships → edges`.
+- **Alternatives**: tldraw (heavy, production licence terms); d3-zoom + custom (re-creates
+  current bugs); keep custom canvas (rejected by grilling Q1).
 
-- **Mouse-only interaction**: `family-tree-canvas.tsx` handles panning via `onMouseDown`,
-  `onMouseMove`, `onMouseUp`, and `document` mouse listeners; zoom is `onWheel` only.
-  `family-member-card.tsx` drags with mouse events only. There is no touch or pinch support,
-  so the canvas is largely unusable on phones and tablets.
-- **No keyboard path for the canvas**: cards are selected and moved only by pointer; there is
-  no focus model or keyboard navigation for the graph.
-- **Fixed sizing**: the sidebar is a fixed `w-80` (320px), cards are `w-64` (256px), and the
-  canvas is `h-screen`. These do not adapt to small viewports.
-- **Overlapping fixed controls**: the view toggle (`fixed top-4 right-4`), zoom controls
-  (`fixed top-5 right-5`), and mobile menu button (`fixed top-4 left-4`) can overlap each other
-  and the canvas on small screens.
-- **Sub-target tap sizes**: the card menu trigger is `h-6 w-6` (~24px) and zoom buttons are
-  `h-8 w-8` (~32px), below the 44px touch-target guideline.
-- **Always-on motion**: hover translate/scale and spin animations do not respect
-  `prefers-reduced-motion`.
+## R-2 Wheel scheme
+- **Decision**: Default whiteboard scheme: `panOnScroll=true`, zoom on Ctrl/Cmd+wheel and pinch,
+  pan with Space/middle drag or hand tool. Setting switches to `zoomOnScroll` scheme. Stored in `localStorage`.
+- **Rationale**: Matches FR-012/FR-034 and trackpad expectations.
 
-## Decision: Unified pointer/touch/keyboard interaction via Pointer Events
+## R-3 Couple junction (union node)
+- **Decision**: Derive a client-only `UnionNode` per spouse relationship; parent-child edges
+  from a couple's shared children originate at the junction. Single parents link directly.
+- **Rationale**: No schema change; replaces the old "midpoint if y within 20px" heuristic.
+- **Alternatives**: Persist unions table (migration, out of scope).
 
-- **Decision**: Replace separate mouse handlers with a single `use-canvas-gestures` hook built
-  on Pointer Events, adding pinch-to-zoom (two-pointer) and keyboard pan/zoom/select.
-- **Rationale**: Pointer Events unify mouse, touch, and pen with one code path, reducing
-  divergence and fixing touch support without a heavy dependency.
-- **Alternatives considered**: keep mouse + add separate touch handlers (duplicated, drift-prone);
-  adopt a gesture library (unneeded weight for this scope); adopt a canvas/graph library (out of
-  scope, risks regressions to existing SVG rendering).
+## R-4 Auto-layout
+- **Decision**: `@dagrejs/dagre` behind `layout(nodes, edges): Positions` in `lib/layout.ts`
+  (top→bottom, union nodes as rank-between nodes, partners same rank). Swap to `elkjs` only if
+  multi-spouse/half-sibling ordering is poor.
+- **Rationale**: Small, synchronous, adequate for <500 nodes.
 
-## Decision: Tailwind breakpoint-driven responsive layout
+## R-5 Undo/redo
+- **Decision**: In-memory command stack of inverse operations (move, add, delete, connect,
+  edge-delete, auto-arrange). Max depth 100. Reset on reload.
+- **Delete undo**: snapshot `{member, relationships, events}` before delete; undo calls the
+  restore endpoint (R-8); redo re-deletes.
+- **Rationale**: Per-session scope agreed in grilling Q8.
 
-- **Decision**: Use Tailwind responsive utilities and the existing `use-mobile` hook to make the
-  sidebar a drawer on small screens and a docked panel on large screens; make cards and dialogs
-  fluid within min/max bounds; reposition controls into a non-overlapping control cluster.
-- **Rationale**: Tailwind is already the styling system; leaning on breakpoints avoids new
-  tooling and keeps changes localized and reviewable.
-- **Alternatives considered**: container queries (limited need at this scope); a new CSS
-  framework (violates stack constraint); JS-driven measurement layout (more complexity, less
-  predictable).
+## R-6 Optimistic persistence
+- **Decision**: Update TanStack Query cache via `setQueryData` on drag stop/mutations; send
+  mutation; on error roll back to snapshot and toast. Stop invalidating the whole tree on every move.
+- **Rationale**: Removes flicker/refetch and satisfies "save once per move".
 
-## Decision: Right-size targets and resolve control placement
+## R-7 Semantic zoom & export & persistence
+- **Semantic zoom**: `useStore` zoom selector with three thresholds (0.4, 1.0); PersonNode
+  renders one of three variants in a constant 256×128 footprint (shared `CARD_SIZE`).
+- **Export**: `html-to-image` `toPng`/`toSvg` on the viewport after computing bounds with
+  `getNodesBounds` + `getViewportForBounds` (React Flow documented pattern). PDF deferred.
+- **Persistence**: `localStorage` keys `ftv.viewport`, `ftv.settings`, `ftv.collapsed`;
+  validated with Zod on read, fall back to defaults on corruption.
 
-- **Decision**: Raise interactive targets to >=44px on touch, and group zoom/reset and view
-  toggle into a single responsive control area that never overlaps content or each other.
-- **Rationale**: Directly addresses the measured tap-target and overlap problems.
-- **Alternatives considered**: leave desktop sizes and only enlarge on touch media (kept as an
-  enhancement, but a consistent minimum is simpler and safer).
+## R-8 API additions and security (Principle VI)
+- **Batch positions** `PATCH /api/family-members/positions`: body `{ positions: [{id,x,y}] }`;
+  Zod: 1–1000 items, positive int ids, finite numbers within ±1e6, no duplicate ids;
+  single DB transaction; 404/400 → no partial writes.
+- **Restore** `POST /api/family-members/restore`: body `{ member, relationships, events }`
+  from a client snapshot. Risks: forged snapshot, id collision, referencing non-existent members.
+  Mitigation: Zod-validate every field with the existing insert schemas plus explicit ids;
+  require relationships to reference the restored member and an existing member; reject if member
+  id already exists (409); events must include the restored member id and only existing members;
+  run in a transaction; cap sizes (≤500 relationships, ≤500 events); do not echo input in errors.
+  Serial sequence is unaffected because restored ids are lower than the sequence.
+- **Auth**: none exists yet (spec 003). Endpoints follow the existing unauthenticated pattern and
+  MUST adopt shared auth middleware when it lands. Documented as accepted exception for now.
+- **XSS**: member text is rendered by React (auto-escaped); export uses DOM clone only.
 
-## Decision: Accessibility baseline WCAG 2.1 AA
+## R-9 `guardian` relationship type mismatch
+- **Finding**: client styles/actions reference `guardian`, schema enum lacks it.
+- **Decision**: Add `'guardian'` to `insertRelationshipSchema` type enum (additive; DB column is
+  varchar so no migration). ConnectPopover offers: parent, child, partner (spouse), guardian, with
+  subtypes biological/adopted/foster/step/legal for parent-child.
 
-- **Decision**: Ensure visible focus, semantic/labeled controls, AA contrast, and
-  `prefers-reduced-motion` handling across the refreshed surfaces.
-- **Rationale**: Matches the constitution's UX principle and the spec's non-negotiable a11y
-  story.
-- **Alternatives considered**: defer a11y to a later pass (rejected; it is core to this feature).
+## R-10 Link validation (client, pure)
+- Block: self-link; duplicate of same (from,to,type) or reverse spouse pair; parent-child cycles
+  (DFS over parent-child edges). Server keeps unique index as source of truth; client surfaces
+  409/400 as errors with rollback.
+- Note: no server cycle check exists today; adding one is a task (server returns 400), since the
+  client check alone is bypassable.
 
-## Decision: Frontend component + accessibility testing
+## R-11 Testing approach
+- Pure modules in `node` env (existing config). One jsdom component test for drag-to-connect via
+  Testing Library using per-file `@vitest-environment jsdom`; React Flow requires
+  `ResizeObserver`/`DOMMatrixReadOnly` stubs in test setup. Perf (200/500 nodes) measured with a
+  dev-only fixture, manually verified, not CI-gated.
 
-- **Decision**: Add jsdom + `@testing-library/react` + `@testing-library/user-event` for
-  interaction tests and `jest-axe` for automated a11y assertions, run under the existing Vitest.
-- **Rationale**: Provides testable verification of responsive behavior, gestures (via pointer
-  events in jsdom), keyboard paths, and a11y, satisfying the verification principle. These are
-  dev-only tools that extend, not replace, the current stack.
-- **Alternatives considered**: end-to-end browser tests only (heavier, slower to gate); manual
-  testing only (not repeatable, fails the verification principle). Visual/gesture nuances that
-  jsdom cannot capture are covered by a documented manual checklist in `quickstart.md`.
-
-## Open Items
-
-- Exact breakpoint values and target device matrix to be confirmed during `/speckit-tasks`
-  and implementation; defaults follow Tailwind's standard breakpoints.
-
-## Decision: Miro-like whiteboard interaction model
-
-- **Decision**: Adopt a fluid infinite-canvas model with the interaction conventions users know
-  from Miro: plain scroll/two-finger swipe pans, Ctrl/Cmd+scroll zooms about the pointer, pinch
-  zooms about the midpoint, and space-drag or middle-button drag pans. Panning carries momentum
-  and zoom-to-fit animates, both disabled under reduced motion.
-- **Rationale**: These conventions match user expectations for a canvas app and directly resolve
-  the "not intuitive" feedback; they are implementable on top of the existing transform-based SVG
-  canvas without a heavy dependency.
-- **Alternatives considered**: keep wheel-only zoom and drag-only pan (the current, unintuitive
-  behavior); adopt a full canvas/graph framework (out of scope, regression risk to existing SVG
-  rendering and auto-align).
-
-## Decision: Zoom-to-fit, zoom indicator, and focal-point zoom
-
-- **Decision**: Provide a zoom control with a live percentage, zoom in/out, reset to 100%,
-  fit-all, and fit-selection; compute fit from the bounding box of member positions with padding,
-  clamped to min/max zoom; zoom always recenters on the pointer or pinch focal point.
-- **Rationale**: Framing content and showing zoom level are core to navigating large trees and
-  are expected whiteboard affordances.
-- **Alternatives considered**: fixed zoom steps without fit (leaves users lost in large trees);
-  center-only zoom (feels unnatural versus pointer-anchored zoom).
-
-## Decision: Minimap overview
-
-- **Decision**: Add a minimap on larger screens showing the whole tree's bounding area and the
-  current viewport rectangle, supporting click/drag to reposition; hide or degrade it on very
-  small screens where space is limited.
-- **Rationale**: A minimap is the standard way to stay oriented on a large canvas and to jump
-  quickly, satisfying the fast-navigation success criterion.
-- **Alternatives considered**: breadcrumb/list navigation only (less spatial, weaker for a tree);
-  no overview (fails the large-tree orientation goal).
-
-## Decision: Marquee multi-select and group move
-
-- **Decision**: Support rubber-band selection to select multiple members and move them together,
-  persisting each moved member's final position exactly once per gesture via the existing
-  position endpoint.
-- **Rationale**: Group arrangement is a natural whiteboard capability and improves manual layout;
-  reusing the existing endpoint avoids any API/schema change.
-- **Alternatives considered**: single-select only (tedious for arranging branches); a new bulk
-  endpoint (unnecessary; per-member persistence satisfies the contract without a schema change).
-
-## Decision: Contextual selection toolbar
-
-- **Decision**: Show a small contextual toolbar near the active selection with common actions
-  (add relation, edit, delete), keyboard reachable and screen-reader labeled.
-- **Rationale**: Surfacing actions at the selection reduces reliance on the small per-card
-  three-dot menu and improves discoverability, a key intuitiveness gain.
-- **Alternatives considered**: keep only the per-card dropdown (low discoverability, small target).
-
-## Scope Boundary: Miro collaboration features excluded
-
-- **Decision**: Implement only the single-user canvas interaction model. Real-time multiplayer,
-  collaborator cursors, comments, sticky notes, freeform drawing, boards/frames, and templates
-  are out of scope.
-- **Rationale**: These belong to collaboration and authoring features (some relate to feature
-  003) and would expand this refresh far beyond an intuitive-navigation goal.
+## R-12 Mobile / touch
+- React Flow handles one-finger pan, pinch zoom. Chrome adaptation uses existing `use-mobile`
+  hook: bottom toolbar, `ui/drawer.tsx` inspector. Handles enlarged to ≥44px hit area via CSS on
+  coarse pointers. Long-press → context menu through Radix ContextMenu.

@@ -44,10 +44,10 @@ description: "Task list for Backend Service Architecture and Reliability"
 **Independent test**: Call service operations directly (no HTTP) to create members/relationships; domain rules are enforced and results returned.
 
 - [ ] T008 [P] [US2] Create `memberService` (getFamilyTree, create/update/updatePosition/delete) delegating to `storage` in `server/services/member-service.ts`
-- [ ] T009 [P] [US2] Create `relationshipService` enforcing self-relationship, duplicate, referenced-member, and enum rules in `server/services/relationship-service.ts`
+- [ ] T009 [P] [US2] Create `relationshipService` enforcing self-relationship, duplicate, referenced-member, enum, and parent-child cycle rules in `server/services/relationship-service.ts`
 - [ ] T010 [P] [US2] Create `eventService` (create with member-existence check, getEvents, delete) in `server/services/event-service.ts`
 - [ ] T011 [US2] Refactor route handlers to delegate to services and shape responses only (preserve status codes) in `server/routes.ts`
-- [ ] T012 [P] [US2] Add service-layer unit tests for all domain rules in `server/__tests__/services/member-service.test.ts`, `relationship-service.test.ts`, and `event-service.test.ts`
+- [ ] T012 [P] [US2] Add service-layer unit tests for all domain rules (including parent-child cycle rejection) in `server/__tests__/services/member-service.test.ts`, `relationship-service.test.ts`, and `event-service.test.ts`
 
 ## Phase 5: User Story 3 — Consistent Boundary Validation (P2)
 

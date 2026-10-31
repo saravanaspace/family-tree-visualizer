@@ -85,7 +85,9 @@ deployment/release automation; this feature picks it up.
 - **Decision**: Document rollback as redeploying the previous known-good artifact (previous image
   tag / previous release). Adopt expand-and-contract guidance for schema changes so a rollback of
   application code remains compatible with the current schema; migrations that are not
-  backward-compatible are explicitly called out in the release notes/runbook.
+  backward-compatible are explicitly called out in the release notes/runbook; for destructive
+  changes the rollback path is a documented database backup taken before release and restored on
+  rollback (no down-migrations).
 - **Rationale**: Satisfies FR-011 and the edge case about non-reversible migrations, without
   requiring automated down-migrations (which Drizzle does not emphasize).
 - **Alternatives considered**:

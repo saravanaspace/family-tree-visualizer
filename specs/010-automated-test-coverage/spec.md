@@ -23,6 +23,11 @@ service architecture are tracked as separate features.
 - Q: What initial minimum coverage threshold should the enforced check use? → A: 60% overall
   (lines/statements) as an achievable baseline, to be raised over time.
 
+### Session 2026-10-31
+
+- Q: Which metrics does the 60% threshold enforce? → A: Lines and statements only. Branch and function
+  coverage are reported but not enforced initially.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Protect API Contracts With Automated Tests (Priority: P1)

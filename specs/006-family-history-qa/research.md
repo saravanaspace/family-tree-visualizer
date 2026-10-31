@@ -47,5 +47,8 @@
 
 ## Open Items
 
+- Decided: no external model provider by default (feature disabled until the operator configures
+  one); only minimum authorized records are sent, nothing is logged (feature 011), and setup docs
+  state this. Target: 90% of answers within 5 s for trees up to 1,000 members.
 - Concrete model provider, index type (lexical vs. vector), and hosting confirmed in tasks;
   privacy/authorization depend on feature 003.

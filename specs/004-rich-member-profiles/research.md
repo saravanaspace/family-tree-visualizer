@@ -42,4 +42,6 @@
 
 ## Open Items
 
-- Final image store and size/type limits confirmed in tasks; exact metadata field set can grow.
+- Image limits (decided): JPEG, PNG, or WebP only; max 5 MB; content type verified server-side.
+  Contact/social links default to private; the flag is persisted now and enforced on public
+  surfaces once feature 003 exists. Final image store confirmed in tasks; metadata field set can grow.

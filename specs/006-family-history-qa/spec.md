@@ -9,6 +9,16 @@
 **Input**: User description: "add RAG for Q&A" (part of a broader idea set; accounts, profiles,
 reminders, and responsive UI are tracked as separate features).
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: May family data be sent to an external model provider? → A: Only if the operator explicitly configures
+  one; only the minimum authorized records are sent, nothing is logged (feature 011 FR-007), and setup
+  docs MUST state this. Default is no external provider (feature disabled until configured).
+- Q: "Reasonable time" and "supported dataset sizes"? → A: 90% of answers within 5 seconds for trees up to
+  1,000 members.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ask Questions About the Family (Priority: P1)

@@ -21,7 +21,7 @@ quality. It does not mean implementation work is complete.
 
 ## Requirement Clarity
 
-- [ ] CHK007 Is "fluid"/"smooth" pan and zoom quantified with a measurable target such as frame rate? [Clarity, Spec §FR-011, SC-007]
+- [ ] CHK007 Is "fluid"/"smooth" pan and zoom quantified with a measurable target such as frame rate? [Clarity, Spec §FR-011, SC-010]
 - [ ] CHK008 Is "supported sizes" defined with explicit breakpoints or device ranges? [Ambiguity, Spec §FR-001, Assumptions]
 - [ ] CHK009 Is the minimap visibility threshold ("larger screens") quantified? [Ambiguity, Spec §FR-014]
 - [ ] CHK010 Are the exact input mappings (scroll, Ctrl/Cmd+scroll, pinch, space/middle-drag) unambiguously specified? [Clarity, Spec §FR-012]
@@ -56,7 +56,7 @@ quality. It does not mean implementation work is complete.
 
 ## Non-Functional Requirements
 
-- [ ] CHK027 Are performance requirements bounded to a stated dataset size and device class? [Non-Functional, Spec §SC-007, Plan §Performance Goals]
+- [ ] CHK027 Are performance requirements bounded to a stated dataset size and device class? [Non-Functional, Spec §SC-010, Plan §Performance Goals]
 - [ ] CHK028 Is reduced-motion handling specified for every animated interaction (momentum, animated fit)? [Non-Functional, Spec §FR-018]
 - [ ] CHK029 Are accessibility standards named (e.g., WCAG 2.1 AA) and applied consistently? [Non-Functional, Contract §C-A4]
 

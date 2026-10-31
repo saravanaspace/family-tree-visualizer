@@ -13,6 +13,8 @@ import {
   type FamilyTreeData
 } from "@shared/schema";
 import { eq, sql, inArray } from 'drizzle-orm';
+import { MemoryStorage } from './memory-storage';
+import { isDemoMode } from './demo-guard';
 
 // Database connection
 const queryClient = postgres(process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/familytree', {
@@ -56,7 +58,22 @@ function parseDates<T extends object>(obj: T): T {
   return result;
 }
 
-export class PostgresStorage {
+/** Operations the app needs from a storage backend (Postgres or in-memory demo). */
+export interface Storage {
+  getFamilyTree(): Promise<FamilyTreeData>;
+  createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
+  updateFamilyMemberPosition(id: number, x: number, y: number): Promise<FamilyMember>;
+  updateFamilyMember(id: number, update: Partial<InsertFamilyMember>): Promise<FamilyMember>;
+  deleteFamilyMember(id: number): Promise<void>;
+  createRelationship(relationship: InsertRelationship): Promise<Relationship>;
+  updateRelationship(id: number, update: Partial<InsertRelationship>): Promise<Relationship>;
+  deleteRelationship(id: number): Promise<void>;
+  createEvent(event: InsertFamilyEvent): Promise<FamilyEvent>;
+  getEvents(memberIds?: number[]): Promise<FamilyEvent[]>;
+  deleteEvent(id: number): Promise<void>;
+}
+
+export class PostgresStorage implements Storage {
   private db: ReturnType<typeof drizzle>;
 
   constructor(db?: ReturnType<typeof drizzle>) {
@@ -198,5 +215,5 @@ export class PostgresStorage {
   }
 }
 
-// Export a singleton instance
-export const storage = new PostgresStorage();
+// Demo mode (enabled only by server/demo.ts) uses in-memory sample data; otherwise Postgres.
+export const storage: Storage = isDemoMode() ? new MemoryStorage() : new PostgresStorage();

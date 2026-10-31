@@ -12,8 +12,8 @@ Drizzle tables). Migration is additive.
 
 ## New: `reminder_preferences`
 
-- `id`, `userId` (FK), `enabled` (boolean), `leadDays` (int), `eventKinds` (array of kinds),
-  `channel` (e.g., email), `timezone`, `createdAt`, `updatedAt`.
+- `id`, `userId` (FK), `enabled` (boolean), `leadDays` (int, default 7), `eventKinds` (array of kinds),
+  `channel` (v1: `email` only), `timezone` (delivery at 08:00 local), `createdAt`, `updatedAt`.
 
 ## New: `reminder_deliveries`
 

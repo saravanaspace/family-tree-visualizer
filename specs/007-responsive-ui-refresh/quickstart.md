@@ -1,61 +1,40 @@
-# Quickstart & Validation Guide: Responsive UI Refresh
-
-This guide validates that the responsive UI refresh meets its spec and contract. It is a
-run/verify guide; implementation details live in `tasks.md` and the code.
+# Quickstart: Validating the Canvas Workspace
 
 ## Prerequisites
 
-- Node dependencies installed (`npm install`).
-- Local database configured per the repository README (for running the app end to end).
-- Dev-only test tooling added during implementation: jsdom, `@testing-library/react`,
-  `@testing-library/user-event`, `jest-axe`.
-
-## Run the app
-
-```powershell
-npm run dev
+```bash
+npm install            # after new deps are added
+cp .env.example .env   # DATABASE_URL for local Postgres
+npm run db:push
 ```
-
-Open the app and use browser device emulation to exercise phone, tablet, and desktop widths.
 
 ## Automated checks
 
-```powershell
-npm run check      # TypeScript must pass
-npm test           # Vitest: component, interaction, and a11y tests must pass
+```bash
+npm run check          # TypeScript
+npx vitest run         # unit + integration + one jsdom component test
 ```
 
-Automated coverage to expect (added during implementation):
-- Layout: no primary control hidden/clipped/overlapped across breakpoints (contract C-L1..C-L4).
-- Gestures: pointer pan, pinch/Ctrl-scroll zoom about focal point, scroll-pan, space/middle-drag
-  pan, and card drag persists once (C-G1..C-G7).
-- Navigation: zoom indicator, zoom-to-fit-all/selection, and minimap reposition (C-N1..C-N4).
-- Selection: click select/clear, marquee multi-select, group move persists per member, and
-  contextual toolbar actions (C-S1..C-S4).
-- Keyboard: focus reachability and canvas member navigation/selection (C-A1..C-A2).
-- Accessibility: `jest-axe` has no violations on core surfaces; reduced-motion honored
-  (C-A3..C-A5).
+Expected: batch-positions, restore, link-validation, `toFlow`, `layout`, undo-stack tests pass.
 
-## Manual validation checklist (device nuances jsdom cannot cover)
+## Manual validation (`npm run dev`)
 
-1. On a phone width, open and dismiss the sidebar drawer without covering the active task.
-2. Pan with one finger and pinch-zoom with two; on a trackpad, two-finger swipe to pan and
-   Ctrl/Cmd+scroll to zoom about the pointer; confirm the page itself does not scroll during
-   canvas gestures.
-3. Confirm momentum panning feels smooth and stops cleanly, and that it is disabled when the OS
-   "reduce motion" setting is on.
-4. Use the zoom control: confirm the percentage updates, and that fit-all and fit-selection frame
-   content with padding, including sensible behavior on an empty or single-member tree.
-5. Use the minimap to jump across a large tree by clicking and dragging the viewport rectangle.
-6. Marquee-select several members and move them together; confirm positions persist after reload.
-7. With a selection active, use the contextual toolbar to add a relation, edit, and delete.
-8. Confirm zoom, fit, view-toggle, and minimap controls form non-overlapping groups at any width.
-9. Tab through the app; confirm visible focus and full keyboard operation, including selecting a
-   member on the canvas and reaching the contextual toolbar.
-10. Rotate the device; confirm the current view and selection are preserved.
+1. **Layout (US5)**: Desktop shows no sidebar; toolbar, top bar, zoom panel, minimap visible.
+   Resize <768px → bottom toolbar; select a member → bottom drawer inspector.
+2. **Drag (US6, SC-009)**: At 25%, 100%, 300% zoom, drag a member — it stays under the cursor;
+   edges follow live; reload confirms position saved (network tab shows one request).
+3. **Connect**: Drag from bottom handle of A to B → chooser → child link. Try A→A, duplicate, and
+   a cycle → inline "not allowed", no request sent. Drag to empty canvas → add-person flow.
+4. **Palette**: Ctrl/Cmd+K, type a name, Enter → centered and selected. Run Auto-arrange, Fit, Export.
+5. **Undo (US7)**: Move, delete a member with relationships, Ctrl/Cmd+Z → member and links return
+   with the same ids; Redo removes again. Auto-arrange then Undo restores positions.
+6. **Zoom levels (US8)**: Zoom through <40%, 40–100%, >100% — card size constant, detail changes.
+   Focus, collapse a branch (+N badge), reload — view/settings/collapse restored.
+7. **Export**: PNG and SVG contain the full tree.
+8. **Touch/a11y**: On a touch device/emulator pan, pinch, long-press menu. Keyboard: Tab to a
+   member, arrows nudge, Enter inspector, Delete + undo toast. Enable reduced motion → no animation.
+9. **Perf**: Load the dev stress fixture (200 / 500 members) and confirm drag/zoom ≥60 / ≥30 fps in
+   the browser performance panel.
 
-## Expected outcome
-
-- All acceptance scenarios in [spec.md](spec.md) pass.
-- All contract items in [contracts/ui-interaction.md](contracts/ui-interaction.md) are satisfied.
-- No regression to existing baseline tree, timeline, and member-management behavior.
+Contracts: [ui-interaction.md](contracts/ui-interaction.md), [api.md](contracts/api.md).
+Data: [data-model.md](data-model.md).

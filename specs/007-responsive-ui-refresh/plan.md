@@ -1,124 +1,133 @@
-# Implementation Plan: Responsive UI Refresh
+# Implementation Plan: Responsive UI Refresh & Canvas Workspace
 
-**Branch**: `007-responsive-ui-refresh` | **Date**: 2026-08-24 | **Spec**: [spec.md](spec.md)
+**Branch**: `007-responsive-ui-refresh` | **Date**: 2026-10-31 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/007-responsive-ui-refresh/spec.md`
+**Input**: Amended feature specification (canvas workspace redesign, 2026-10-31)
 
 ## Summary
 
-Refresh the presentation and interaction of the existing family-tree client so the core
-tree, timeline, and member-management views are intuitive and usable across mobile, tablet,
-and desktop, adopting a modern infinite-whiteboard canvas model similar to Miro. The approach
-is a frontend-only change: introduce a fluid pan/zoom canvas (momentum, zoom about the focal
-point, standard scroll/Ctrl-scroll/pinch/space-drag mappings), a zoom indicator with
-zoom-to-fit, a minimap, marquee multi-select with group move, and a contextual toolbar; make
-layout responsive; right-size controls and tap targets; and add automated component and
-accessibility checks. Miro's collaboration surface (multiplayer, cursors, comments, sticky
-notes, drawing, boards) is explicitly out of scope. No data model, API, or persistence changes
-are required beyond the existing member position endpoint.
+Replace the hand-rolled tree canvas with a graph-canvas library (React Flow) so the tree behaves
+like Miro/n8n: infinite pan/zoom, free drag with live edges, drag-to-connect, marquee select,
+minimap, and floating chrome (toolbar, command palette, inspector) instead of a permanent
+sidebar. Add client-side undo/redo, dagre auto-arrange, snapping, semantic zoom, and PNG/SVG
+export. Backend changes are small: a batch position endpoint and a restore endpoint (for undoing
+member deletes). No schema change.
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.6 on React 18.3
+**Language/Version**: TypeScript 5.6 on React 18.3; Node/Express server (unchanged)
 
-**Primary Dependencies**: Vite 5, Tailwind CSS 3, Radix UI (shadcn/ui), TanStack Query,
-Wouter, lucide-react
+**Primary Dependencies (new)**: `@xyflow/react` (canvas, MIT), `@dagrejs/dagre` (layout),
+`html-to-image` (PNG/SVG export). Existing: Vite, Tailwind, Radix/shadcn (`command`, `drawer`,
+`context-menu`, `sheet`, `tooltip`), TanStack Query, framer-motion, lucide-react.
 
-**Storage**: N/A for this feature (no schema or persistence changes; member positions continue
-to use the existing REST endpoint)
+**Storage**: Existing PostgreSQL/Drizzle, **no schema change**. Positions remain `x`,`y` on
+`family_members`. Viewport, settings, collapse state in `localStorage`. Undo history in memory.
 
-**Testing**: Vitest; add jsdom + @testing-library/react + @testing-library/user-event for
-component/interaction tests and jest-axe for automated accessibility assertions
+**Testing**: Vitest (existing). Pure-logic tests run in the existing `node` environment. Add
+`jsdom` + `@testing-library/react` + `@testing-library/user-event` for one drag-to-connect
+component test, and `vitest-axe` for chrome a11y assertions, via a per-file
+`// @vitest-environment jsdom` pragma so server tests are unaffected.
 
-**Target Platform**: Modern evergreen browsers on mobile, tablet, and desktop (touch and
-pointer input)
+**Target Platform**: Evergreen browsers; touch and pointer input; tablets ≥768px use desktop layout.
 
-**Project Type**: Web application (existing `client/` frontend + `server/` backend); this
-feature touches the frontend only
+**Project Type**: Web app; mostly `client/`, plus two endpoints in `server/` and shared schemas
+in `shared/`.
 
-**Performance Goals**: Sustain ~60 fps during pan/zoom (including momentum and animated
-zoom-to-fit) on a mid-range mobile device for trees up to ~100 members; view switches feel
-instant (<100 ms perceived)
+**Performance Goals**: 60 fps drag/zoom at 200 members, ≥30 fps at 500; auto-arrange + save of 100
+members < 2 s.
 
-**Constraints**: No regressions to existing baseline behavior; respect `prefers-reduced-motion`
-(disables momentum and animated zoom); meet WCAG 2.1 AA contrast, visible focus, and >=44px
-touch targets; no new persistent state
+**Constraints**: Respect `prefers-reduced-motion`; WCAG 2.1 AA for chrome; ≥44px touch targets;
+use theme tokens (no hard-coded colors) so a later dark theme is cheap.
 
-**Scale/Scope**: Core surfaces only — tree canvas (fluid pan/zoom, minimap, zoom indicator,
-marquee select, contextual toolbar), member card, sidebar controls, view toggle, and the
-add/edit/connect dialogs; typical trees up to ~100 members
+**Scale/Scope**: Single shared tree, typically <200 members.
+
+### Known pre-existing issue to resolve in this feature
+
+Client code and styles use relationship types `guardian` (and `adopted` as a type), but
+`insertRelationshipSchema` only allows `parent-child | spouse | adopted | step-parent`.
+`guardian` links created from the existing UI would fail validation. The connect chooser must
+only offer values the schema accepts; decision recorded in [research.md](research.md) (R-9):
+extend the shared enum with `guardian` (additive, no DB migration since `type` is a varchar).
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+- **I. Traceability**: PASS — spec/plan/tasks maintained; old plan/tasks regenerated.
+- **II. Type-safe stack**: PASS with note — adds three client dependencies, no stack replacement
+  (React/Express/Drizzle/Zod retained). New API payloads are Zod-validated in `shared/`.
+  Constitution "Technical Constraints" forbids replacing the stack, not adding libraries.
+- **III. Behavior-driven verification**: PASS — Vitest tests for batch/restore endpoints
+  (success, validation failure, missing id, rollback), plus pure modules (`toFlow`, `layout`,
+  link validation, undo stack). `npm run check` + tests gate completion.
+- **IV. Integration boundaries**: PASS — batch and restore endpoints get storage-level integration
+  tests (relationship/event integrity on restore); drag-to-connect has a component test.
+- **V. Accessible, responsive UX**: PASS — keyboard nudge/delete/enter, labelled controls,
+  reduced motion, empty/loading/error states retained. Scope is directly the stated redesign.
+- **VI. Security by design**: PASS WITH ACCEPTED EXCEPTION (no authentication on state-changing endpoints until spec 003; consistent with all existing endpoints) — new endpoints validate with Zod (bounded array size, finite
+  numbers, positive integer ids), return generic errors, add no secrets/logging of member data.
+  Trust boundary and abuse cases (oversized batch, forged restore snapshot, id collision) in
+  [research.md](research.md) R-8. Auth is out of scope here (spec 003); new endpoints MUST use the
+  same auth middleware once it exists.
 
-- **I. Requirements and Traceability**: PASS — `spec.md` exists with prioritized stories and
-  acceptance criteria; `plan.md` here; `tasks.md` to follow via `/speckit-tasks`.
-- **II. Consistent Type-Safe Stack**: PASS — remains TypeScript/React/Tailwind/Radix. Added
-  dev-only test libraries (jsdom, Testing Library, jest-axe) extend the existing Vitest tooling
-  and introduce no runtime stack change. No shared schema or DB change.
-- **III. Behavior-Driven Verification**: PASS — each acceptance criterion maps to a component,
-  interaction, or accessibility test; `npm run check` and the test suite gate completion.
-- **IV. Reliable Integration Boundaries**: PASS — the only crossed boundary is the existing
-  position-update endpoint, exercised by existing behavior; interaction changes are covered by
-  component/interaction tests. No new API or storage contract.
-- **V. Accessible, Responsive, and Focused UX**: PASS — this feature is the direct embodiment
-  of the principle; scope is limited to presentation/interaction with no unrelated redesign.
-
-Result: No violations. Complexity Tracking not required.
+Result: no unjustified violations. Post-design re-check: still PASS.
 
 ## Project Structure
 
-### Documentation (this feature)
+### Documentation
 
 ```text
 specs/007-responsive-ui-refresh/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output
-├── data-model.md        # Phase 1 output (UI state only; no persistent entities)
-├── quickstart.md        # Phase 1 output (validation guide)
-├── contracts/           # Phase 1 output (UI interaction & responsive contract)
-│   └── ui-interaction.md
-└── tasks.md             # Phase 2 output (/speckit-tasks - NOT created by /speckit-plan)
+├── spec.md  plan.md  research.md  data-model.md  quickstart.md
+├── contracts/
+│   ├── ui-interaction.md       # UI behavior contract
+│   └── api.md                  # batch positions + restore endpoints
+└── tasks.md                    # /speckit-tasks
 ```
 
-### Source Code (repository root)
+### Source Code
 
 ```text
-client/
-├── index.html
-└── src/
-    ├── App.tsx                     # route shell; verify responsive container
-    ├── index.css                   # design tokens; add breakpoint/reduced-motion helpers
-    ├── pages/
-    │   └── family-tree.tsx         # layout shell, sidebar toggle, control placement
-    ├── components/
-    │   ├── family-tree-canvas.tsx  # fluid pan/zoom, marquee select, focal-point zoom
-    │   ├── family-member-card.tsx  # touch drag, larger tap targets, focus/keyboard
-    │   ├── sidebar-controls.tsx    # responsive sidebar, selected-member context
-    │   ├── zoom-controls.tsx       # zoom %, in/out, reset, fit-all, fit-selection
-    │   ├── canvas-minimap.tsx      # NEW: overview minimap with viewport reposition
-    │   ├── selection-toolbar.tsx   # NEW: contextual actions near the selection
-    │   ├── timeline-view.tsx       # responsive timeline layout
-    │   ├── add-member-modal.tsx    # mobile-friendly dialog sizing/focus
-    │   ├── connect-members-modal.tsx
-    │   ├── edit-member-modal.tsx
-    │   └── ui/                      # shared shadcn primitives (extend, do not fork)
-    └── hooks/
-        ├── use-mobile.tsx          # existing breakpoint hook; reuse/extend
-        ├── use-canvas-gestures.ts  # NEW: pointer/touch/keyboard + momentum + input mappings
-        └── use-canvas-viewport.ts  # NEW: zoom bounds, zoom-to-fit, focal-point zoom, minimap math
+shared/schema.ts                        # + batchPositionsSchema, restoreMemberSchema, 'guardian' type
 
-client/src/**/__tests__/           # NEW: component, interaction, and a11y tests (Vitest)
+server/
+├── routes.ts                           # + PATCH /api/family-members/positions, POST /api/family-members/restore
+├── storage.ts                          # + updateFamilyMemberPositions (transaction), restoreFamilyMember (transaction)
+└── __tests__/                          # storage + route-validation tests
+
+client/src/
+├── pages/family-tree.tsx               # slim shell: canvas + chrome; auto-align logic removed
+├── features/tree-canvas/
+│   ├── TreeCanvas.tsx                  # ReactFlow wrapper, handlers, settings
+│   ├── nodes/PersonNode.tsx            # replaces family-member-card.tsx (3 detail levels, handles, quick-add)
+│   ├── nodes/UnionNode.tsx             # couple junction (derived)
+│   ├── edges/RelationshipEdge.tsx      # styled by type/status, labels, selectable
+│   ├── chrome/{LeftToolbar,TopBar,ZoomPanel,InspectorPanel,CommandPalette,FilterPopover,ConnectPopover}.tsx
+│   ├── hooks/{useTreeGraph,useUndoRedo,useViewportPersist,useTreeShortcuts,useCanvasSettings,useExport}.ts
+│   └── lib/{toFlow,layout,validateLink,focus,collapse,constants,edgeStyle}.ts   # pure, unit-tested
+├── components/{add,edit,connect}-member-modal.tsx   # kept (advanced fields)
+├── components/timeline-view.tsx        # shares TopBar + inspector only
+└── (removed) family-tree-canvas.tsx, family-member-card.tsx, zoom-controls.tsx, sidebar-controls.tsx
 ```
 
-**Structure Decision**: Single existing web application; all work lands in `client/src`. Shared
-interaction logic is consolidated into a `use-canvas-gestures` hook (pointer/touch/keyboard,
-momentum, and whiteboard input mappings) and a `use-canvas-viewport` hook (zoom bounds,
-focal-point zoom, zoom-to-fit, minimap math) so all input paths stay consistent. The minimap and
-contextual selection toolbar are new presentational components. Frontend component tests are
-added alongside components under `__tests__/`, mirroring the existing server test convention.
+**Structure Decision**: Feature-folder `client/src/features/tree-canvas/` keeps the canvas
+cohesive; logic that can silently break lives in pure `lib/` modules with unit tests; React
+components stay thin. Sidebar capabilities (stats, search, filters) are redistributed to the
+palette, filter popover, and inspector, then the old files are deleted in the cut-over (no flag,
+per spec FR-036).
+
+## Delivery Phases (map to spec stories)
+
+1. **Foundation (US6 core, SC-009)**: React Flow canvas, `toFlow`, PersonNode/Edge, correct
+   drag, batch positions endpoint, optimistic updates. Fixes today's zoom/drag bug.
+2. **Chrome (US5, US1–3)**: remove sidebar; toolbar, top bar, palette, inspector, mobile drawer,
+   a11y, touch, wheel-scheme setting.
+3. **Connect (US6)**: handles, validation, chooser, union nodes, edge editing, quick-add, context menus.
+4. **Power (US7)**: dagre auto-arrange, snapping/guides, align/distribute, undo/redo + restore endpoint.
+5. **Scale & share (US8)**: semantic zoom, focus, collapse, persistence, export, perf fixture.
 
 ## Complexity Tracking
 
-> No constitution violations; no complexity justifications required.
+| Item | Why needed | Simpler alternative rejected because |
+|------|------------|--------------------------------------|
+| Three new client deps | Cursor-anchored zoom, touch, marquee, handles, minimap are large and bug-prone to hand-build | Extending the custom canvas repeats the current drag/zoom bugs |
+| Restore endpoint | Undo of delete must recreate member with original id/relationships/events | Re-POSTing creates new ids, breaking relationship/event references and redo |

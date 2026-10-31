@@ -25,6 +25,12 @@ coverage are tracked as separate features.
   named rules plus basic referential/enumeration integrity (referenced members must exist;
   relationship type/status must be valid enum values); complex genealogy is deferred.
 
+### Session 2026-10-31
+
+- Q: Is parent-child cycle prevention in scope? → A: Yes, added to FR-006 to match feature 007 FR-024.
+- Q: Should error bodies carry the correlation ID? → A: No; the body stays `{ message, error? }`. The ID is
+  returned in the `X-Request-Id` response header (feature 011).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Receive Consistent, Safe API Errors (Priority: P1)
@@ -149,10 +155,11 @@ working.
   themselves to transport concerns (input parsing, status selection, response shaping).
 - **FR-006**: The service layer MUST enforce family-data domain rules, including at minimum
   preventing a member from being related to itself, preventing duplicate equivalent
-  relationships, requiring that referenced members exist, and requiring valid relationship
-  type and status enum values; violations MUST be rejected with clear domain errors. Complex
-  genealogical rules (parent-child cycle prevention, biological-parent count limits, and
-  birth/death date sanity) are explicitly out of scope for this feature.
+  relationships, requiring that referenced members exist, requiring valid relationship
+  type and status enum values, and preventing parent-child cycles (so the UI rule in feature
+  007 FR-024 is also enforced at the API); violations MUST be rejected with clear domain
+  errors. Other complex genealogical rules (biological-parent count limits and birth/death
+  date sanity) are explicitly out of scope for this feature.
 - **FR-007**: Input MUST be validated and rejected at the API boundary through a single
   consistent mechanism before business logic executes.
 - **FR-008**: Valid input MUST be passed to the service layer as validated, typed data.

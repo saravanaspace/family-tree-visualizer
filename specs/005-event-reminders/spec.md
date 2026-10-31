@@ -10,6 +10,16 @@
 etc" (part of a broader idea set; accounts, profiles, Q&A, and responsive UI are tracked as
 separate features).
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: Delivery channel for v1? → A: Email only; other channels are future work.
+- Q: Defaults? → A: Lead time 7 days; delivery at 08:00 in the recipient's time zone (SC-004 window is
+  08:00–10:00 local).
+- Q: Deceased members? → A: Birthday reminders are suppressed by default; anniversary reminders are
+  suppressed when either partner is recorded as deceased. Users may opt in to memorial reminders later.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Get Reminded About Upcoming Birthdays (Priority: P1)

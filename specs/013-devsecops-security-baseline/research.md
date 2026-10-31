@@ -84,9 +84,10 @@ enacts constitution Principle VI.
 
 ## Decision: Enforced severity threshold and risk-acceptance policy
 
-- **Decision**: The blocking threshold is **high severity and above**; medium/low findings are
-  reported and tracked but do not block. A finding may be accepted only with a documented rationale
-  and named owner, recorded as a narrow, time-bounded suppression (tool allowlist entry plus a
+- **Decision**: The blocking threshold is **high severity and above** (CVSS 7.0+, i.e. High and
+  Critical); medium/low findings are reported and tracked but do not block. A finding may be
+  accepted only with a documented rationale and a named repository maintainer as owner (the PR
+  author may not accept their own finding), recorded as a narrow, time-bounded suppression (tool allowlist entry plus a
   tracked note), not a blanket disable.
 - **Rationale**: Satisfies FR-008 and the edge cases on fail-loud gates and narrow suppression;
   keeps the baseline achievable while preventing silent risk accumulation.

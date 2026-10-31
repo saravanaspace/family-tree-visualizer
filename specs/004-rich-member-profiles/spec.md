@@ -10,6 +10,14 @@
 location, social media etc" (part of a broader idea set; accounts, sharing, reminders, Q&A,
 and responsive UI are tracked as separate features).
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: Image limits? → A: JPEG, PNG, or WebP only; maximum 5 MB per image; content type verified server-side.
+- Q: Is the private flag stored before accounts (003) exist? → A: Yes. Contact and social links default to
+  private and the flag is persisted now; it is enforced on public/shared surfaces once 003 provides them.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Add a Photo to a Member (Priority: P1)

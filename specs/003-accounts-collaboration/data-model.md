@@ -26,7 +26,8 @@ owner.
   (pending | accepted | revoked | expired), `expiresAt`.
 
 ### Public share (`public_shares`)
-- `id`, `groupId` (FK), `token` (unique), `status` (active | revoked), `createdBy`, `createdAt`.
+- `id`, `groupId` (FK), `token` (unique), `status` (active | revoked), `createdBy`, `createdAt`, `expiresAt` (nullable; null = no expiry).
+  `token` is unguessable (cryptographically random); expired or revoked shares grant no access.
 
 ## Scope changes to existing tables
 

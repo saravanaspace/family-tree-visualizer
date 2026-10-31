@@ -21,7 +21,7 @@ All error responses use:
 | Condition | Status | Body |
 |-----------|--------|------|
 | Payload fails schema validation | 400 | `{ message, error: <zod issues> }` |
-| Domain rule violation (self-relationship, invalid enum) | 400 | `{ message }` |
+| Domain rule violation (self-relationship, invalid enum, parent-child cycle) | 400 | `{ message }` |
 | Duplicate equivalent relationship | 409 | `{ message }` |
 | Referenced record not found | 404 | `{ message }` |
 | Unexpected server error | 500 | `{ message: "Internal Server Error" }` |

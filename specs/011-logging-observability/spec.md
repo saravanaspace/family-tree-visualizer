@@ -14,6 +14,13 @@ issues in every environment. Part of a broader code-health idea set; code qualit
 backend service architecture, automated test coverage, and deployment/release are tracked as
 separate features.
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: How is the correlation ID exposed to clients? → A: Via the `X-Request-Id` response header (reused
+  from the inbound header when present); error bodies are unchanged (feature 009).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Trace a Request End to End (Priority: P1)

@@ -93,6 +93,15 @@ An interactive web application for creating, visualizing, and managing family tr
 
 ## Development
 
+### Demo mode (no database)
+```bash
+npm run dev:demo
+```
+Serves a small in-memory sample family (8 members, 3 generations, relationships and events) with no
+database. Changes are not saved; restart, or call `POST /api/demo/reset` from the same machine
+(loopback only), to restore the original data. Demo mode refuses to start when `NODE_ENV=production`.
+Staging and production keep using Postgres via `npm run dev` / `npm start`.
+
 ### Testing
 Run the test suite:
 ```bash

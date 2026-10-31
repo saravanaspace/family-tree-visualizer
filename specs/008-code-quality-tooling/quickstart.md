@@ -59,6 +59,8 @@ One-time repository configuration (GitHub UI: Settings → Branches → Branch p
 - Select the `ci.yml` workflow (its job) as a required check.
 - Enable **Require branches to be up to date before merging** (recommended).
 
+- Applied by a repository admin (a GitHub setting, not repo code); list the required check names
+  in this document.
 - **Validate**: a pull request whose CI run fails cannot be merged; once fixed and green, it can.
 
 ## 6. Project identity (FR-009, FR-010)

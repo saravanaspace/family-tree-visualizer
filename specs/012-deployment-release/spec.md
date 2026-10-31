@@ -13,6 +13,15 @@ application so releases are safe and reproducible. Part of a broader code-health
 quality tooling, backend service architecture, automated test coverage, and logging/observability
 are tracked as separate features.
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: Hosting platform? → A: Stay platform-agnostic; Replit is the documented reference target.
+- Q: Rolling back non-backward-compatible migrations? → A: No down-migrations. Use expand/contract
+  (backward-compatible) migrations so the previous release still runs; destructive changes require a
+  documented database backup and restore as the rollback path.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Produce a Reproducible Release Build (Priority: P1)

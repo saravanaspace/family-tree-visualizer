@@ -8,6 +8,14 @@
 
 **Input**: User description: "Document the existing core family-tree functionality: family member CRUD, parent-child and spouse relationships, family events, interactive tree visualization, timeline view, PostgreSQL persistence, REST APIs, and responsive UI. Treat already implemented behavior as the baseline. Read from other files in the repo to identify the improvements required and add to the list. Also, identify new improvements and enhancements for this repo or a family tree functionality"
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: Which spec governs search scope (FR-012)? → A: Feature 002; see FR-012.
+- Q: Who enforces parent-child cycle prevention (FR-010)? → A: The backend service layer (feature 009
+  FR-006), with the UI (feature 007 FR-024) giving early feedback.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Manage Family Members (Priority: P1)
@@ -147,7 +155,9 @@ and mobile viewport sizes using keyboard navigation for form controls.
 - **FR-011**: The system MUST provide consistent error responses and user feedback for
   failed requests, missing records, validation failures, and persistence failures.
 - **FR-012**: The system MUST provide member search and filtering by name, life dates,
-  location, relationship, and event criteria as the dataset grows.
+  location, relationship, and event criteria as the dataset grows. Feature 002 is the
+  authoritative spec for this: its first release covers name search plus living-status,
+  birth-period, and location filters; relationship and event criteria are deferred.
 - **FR-013**: The system MUST define explicit behavior for incomplete dates, unknown
   people, disconnected branches, duplicate relationships, and cyclic graphs.
 - **FR-014**: The system MUST provide automated coverage for storage, shared validation,

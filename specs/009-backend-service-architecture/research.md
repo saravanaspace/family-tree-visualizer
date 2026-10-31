@@ -62,8 +62,9 @@ existing API contract.
 - **Decision**: The relationship service enforces: (1) no self-relationship (`fromMemberId !==
   toMemberId`), (2) no duplicate equivalent relationship (same from/to/type — already a DB unique
   index; surface a friendly `ConflictError` instead of a raw DB error), (3) referenced members
-  must exist, and (4) `type` and `status` must be valid enum values. Complex genealogy
-  (cycle detection, parent-count limits, date sanity) is explicitly deferred.
+  must exist, (4) `type` and `status` must be valid enum values, and (5) parent-child
+  relationships must not create a cycle (aligns with feature 007 FR-024). Other complex genealogy
+  (parent-count limits, date sanity) is explicitly deferred.
 - **Rationale**: Matches the clarified scope — clearly-correct, behavior-preserving invariants
   without opening large genealogical modeling work.
 - **Alternatives considered**: Full genealogical validation now — deferred by clarification;

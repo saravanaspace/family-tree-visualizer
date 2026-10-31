@@ -1,75 +1,62 @@
-# UI Interaction & Responsive Contract: Responsive UI Refresh
+# UI Interaction & Layout Contract
 
-This is the UI contract for the refreshed surfaces. It defines the observable behavior that
-tests and review verify. It replaces external API contracts, which this feature does not change.
+Observable behavior verified by tests and review. IDs are referenced from `tasks.md`.
 
-## Breakpoints and Layout
+## Layout
 
-| Surface | Small (phone) | Medium (tablet) | Large (desktop) |
-|---------|---------------|-----------------|-----------------|
-| Sidebar | Off-canvas drawer, toggled by a visible button | Drawer or docked per space | Docked panel |
-| Tree canvas | Full width; controls clustered, non-overlapping | Full remaining width | Remaining width beside sidebar |
-| Member card | Fluid width within min/max; content wraps | Fluid width | Fixed comfortable width |
-| Dialogs | Full-width sheet within viewport; scrolls | Centered, bounded | Centered, bounded |
-| Control cluster (zoom/reset/view toggle) | Single non-overlapping group | Single group | Single group |
+- C-L1: Desktop (≥768px) has no permanent side panel; canvas fills viewport.
+- C-L2: Floating chrome: left toolbar, top bar (title, Tree/Timeline switch, search trigger, filter,
+  export), bottom-left zoom panel + minimap, right inspector (opens on selection).
+- C-L3: <768px: toolbar at bottom, inspector as bottom drawer, minimap hidden or collapsed.
+- C-L4: No primary control is hidden, clipped, or overlapped at any supported breakpoint; no page-level
+  horizontal scroll; orientation change preserves view and selection.
 
-**Contract**:
-- C-L1: At every supported breakpoint, no primary control is hidden, clipped, or overlapped.
-- C-L2: The whole page MUST NOT require horizontal scrolling to reach primary controls.
-- C-L3: Orientation changes preserve the current view and selection.
-- C-L4: Long names, dates, and locations wrap or truncate without breaking layout.
+## Input mappings
 
-## Gestures and Input (whiteboard model, Miro-like)
+| Input | Whiteboard scheme (default) | Alternate scheme |
+|-------|----------------------------|------------------|
+| Wheel / two-finger swipe | Pan | Zoom at pointer |
+| Ctrl/Cmd + wheel, pinch | Zoom at pointer/pinch center | Zoom |
+| Space-drag, middle-drag, hand tool | Pan | Pan |
+| Drag on empty canvas | Marquee select | Marquee select |
+| Drag on member | Move (follows pointer ±2px at all zooms) | same |
+| One-finger drag on empty canvas (touch) | Pan | Pan |
+| Long-press | Context menu | Context menu |
 
-**Contract**:
-- C-G1: Single-pointer drag on empty canvas pans; on a card drags the card; space-drag or
-  middle-button drag always pans.
-- C-G2: Pinch (two-pointer) zooms about the pinch midpoint; Ctrl/Cmd+scroll zooms about the
-  pointer; plain scroll/trackpad two-finger swipe pans; Shift+scroll pans horizontally.
-- C-G3: Canvas gestures MUST NOT hijack normal page scrolling outside the canvas.
-- C-G4: A card drag persists its final position exactly once via the existing position endpoint;
-  a group move persists each moved member's final position exactly once.
-- C-G5: Interactive targets are >=44px in the touch input mode.
-- C-G6: Zoom centers on the pointer or pinch focal point and is clamped to the min/max range.
-- C-G7: Panning MAY carry momentum; momentum and animated zoom are disabled under reduced motion.
+- C-G1: Zoom clamped 10%–400%; fit-to-view pads content; empty/single-member trees give a bounded view.
+- C-G2: Drag saves exactly once on release; live edges during drag.
+- C-G3: Canvas gestures do not hijack page scroll outside the canvas.
 
-## Zoom Controls and Navigation
+## Connect & edit
 
-**Contract**:
-- C-N1: A zoom control shows the current zoom percentage and offers zoom in, zoom out, and reset
-  to 100%.
-- C-N2: Zoom-to-fit-all frames all content with padding; zoom-to-fit-selection frames the
-  current selection.
-- C-N3: Empty or single-member trees produce a sensible, bounded fit view.
-- C-N4: A minimap on larger screens shows the viewport within the whole tree and supports
-  click/drag to reposition; it stays accurate as members change and hides or degrades on very
-  small screens.
+- C-E1: Handles: top=parent, bottom=child, sides=partner. Release on member → chooser; on empty → "Add new person here as…".
+- C-E2: Invalid links (self, duplicate, cycle) show an inline "not allowed" hint; nothing is saved.
+- C-E3: Selecting an edge exposes edit/delete; hover on selected member shows quick-add parent/child/partner.
+- C-E4: Multi-select supports group move, align, distribute; add/edit/delete act on single selection.
 
-## Selection
+## Commands & shortcuts
 
-**Contract**:
-- C-S1: Clicking a member selects it; clicking empty canvas clears selection.
-- C-S2: A marquee (rubber-band) drag selects all enclosed members; an empty marquee clears
-  selection without error.
-- C-S3: Moving a multi-selection moves all selected members together (C-G4 persistence applies);
-  multi-selection supports group move only.
-- C-S4: With a single member selected, a contextual toolbar appears near it with common actions
-  (add relation, edit, delete) and is keyboard reachable; with multiple members selected, only
-  group move is offered.
+| Key | Action |
+|-----|--------|
+| Ctrl/Cmd+K or `/` | Command palette |
+| Ctrl/Cmd+Z / Shift+Ctrl/Cmd+Z | Undo / redo |
+| Delete | Delete selected (undo toast, no confirm) |
+| Enter | Open inspector for focused member |
+| Arrows (+Shift) | Nudge selected 1px/10px; saves once after 300ms idle or key release |
+| F / 0 | Fit view / reset zoom 100% |
+| Shift (held while dragging) | Invert snapping |
 
-## Keyboard and Accessibility
+## Detail levels (constant 256×128 footprint)
 
-**Contract**:
-- C-A1: Every interactive control is reachable by keyboard with a visible focus indicator.
-- C-A2: Canvas members are keyboard-focusable; arrow-key navigation moves focus between members
-  and Enter/Space selects; documented keys pan/zoom the canvas.
-- C-A3: Controls and status changes expose accessible names and states to assistive technology.
-- C-A4: Text and essential controls meet WCAG 2.1 AA contrast and target-size guidance.
-- C-A5: When `prefers-reduced-motion` is set, non-essential animations are disabled.
+- <40%: name label only; 40–100%: photo, name, dates; >100%: full details. Edge labels only for
+  non-default states and marriage year >100%; hidden <40%.
 
-## Non-Goals
+## Accessibility
 
-- No change to data, persistence, or REST endpoints beyond the existing position update.
-- No new views or features; this is a presentation/interaction refresh of existing surfaces.
-- Not building Miro's collaboration surface: no real-time multiplayer, collaborator cursors,
-  comments, sticky notes, freeform drawing, boards/frames, or templates.
+- C-A1: Members are focusable (roving tab), all controls labelled with tooltips, visible focus ring.
+- C-A2: Reduced motion disables animated fit/zoom and auto-arrange animation.
+- C-A3: Chrome meets WCAG 2.1 AA contrast; touch targets ≥44px; status changes (undo toast, errors) are announced via live region.
+
+## Persistence
+
+- C-P1: Zoom/pan, snap, minimap, scheme persist in `localStorage`; first visit fits to view; corrupt data falls back to defaults.

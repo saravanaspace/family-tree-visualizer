@@ -20,6 +20,12 @@ backend service architecture and automated test coverage are tracked as separate
   commits directly to `main`? → A: Run on pull requests and on pushes to `main`, and adopt a
   PR-based flow with branch protection so the gate is enforced before merge.
 
+### Session 2026-10-31
+
+- Q: Who applies branch protection (FR-006a) and how is it verified? → A: A repository admin applies it in
+  GitHub settings; the setup docs list the required status checks and a manual verification step
+  (open a PR with a failing check and confirm merge is blocked).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Catch Style and Correctness Issues Locally (Priority: P1)
