@@ -8,6 +8,8 @@ export default defineConfig({
   out: "./migrations",
   schema: "./shared/schema.ts",
   dialect: "postgresql",
+  // Managed by server/db/migrate.ts and connect-pg-simple; keep `db:push` from renaming or dropping them.
+  tablesFilter: ["*", "!app_migrations", "!user_sessions"],
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },

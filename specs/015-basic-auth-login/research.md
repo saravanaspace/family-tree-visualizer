@@ -1,5 +1,14 @@
 # Phase 0 Research: Basic Authentication and Authorization
 
+## Delivery Phasing
+
+The first delivery is the client-only login UI, default demo identity, route transition to the existing
+tree page, and logout. It accepts username `default` with any non-empty password and stores only a
+tab-scoped marker. This decision enables the UI flow without claiming verified identity or restricting
+the current APIs. Phase 2 replaces that UI marker as the authentication source with a real server-side
+session and password verification. Existing family-data endpoints remain unauthenticated until a later
+authorization phase.
+
 ## Existing Assets
 
 - `passport`, `passport-local`, `express-session`, `connect-pg-simple` are already dependencies.
@@ -39,13 +48,27 @@
 ## Decision: Throttling
 
 - **Decision**: Per-account lockout (5 consecutive failures, 15-minute lock, reset on success) stored on the
-  password credential row; plus per-source limiter (e.g. 20 attempts per 15 minutes per IP) kept in memory.
+  `login_attempts` row keyed by normalized username; plus a per-client-IP limiter of 20 attempts per
+  15 minutes, kept in memory for the planned single-instance app.
+- **Client address**: Use the direct connection address unless `TRUSTED_PROXIES` lists the trusted
+  proxy IPs/CIDRs; only then accept the forwarded client address.
 - **Rationale**: FR-004; temporary lock avoids permanent denial of service on the real owner. The in-memory
-  per-IP limiter is adequate for a single instance and can move to the DB later.
+  per-IP limiter is adequate for the planned single-instance app and can move to shared storage if
+  multi-instance deployment is introduced.
 - **Behaviour when locked**: Return the same status and generic message shape with a retry hint; never reveal
   that the account exists. Lockout state is applied to unknown usernames identically (tracked in
   `login_attempts` keyed by normalized username) so existence is not leaked.
 - **Alternatives**: Permanent lockout (abusable); CAPTCHA (out of scope).
+
+## Decision: Authentication route integration
+
+- **Decision**: Register a focused authentication route module with direct credential verification and
+  server-side sessions rather than wiring Passport for the single password credential available in this
+  phase.
+- **Rationale**: Keeps the current sign-in flow small while preserving account/credential separation for
+  future methods.
+- **Alternatives**: Passport local strategy (already installed, but adds indirection without a second
+  authentication strategy in this phase).
 
 ## Decision: Tree entity and ownership
 
@@ -68,6 +91,11 @@
 - **Decision on seed**: Startup seed creates the owner's password credential only if it is missing, from
   `DEFAULT_OWNER_USERNAME` and `DEFAULT_OWNER_PASSWORD`. In production, startup fails if they are unset. In
   development, a generated password is printed once.
+- **Initial account scope**: The first server-side sign-in phase accepts the seeded default account only.
+  Operator CLI account management is deferred. Multiple users are created only as isolated automated-test
+  fixtures; production receives no shared test accounts or test passwords.
+- **Credential rules**: Default and later operator-set passwords are 12–256 characters with no composition
+  requirements.
 - **Note**: The migration is reviewed as destructive-adjacent because it alters constraints; it is additive
   and has a documented rollback.
 
@@ -76,6 +104,8 @@
 - **Decision**: `server/cli/users.ts` with `create`, `disable`, `enable`, `reset-password` run via
   `npm run users -- <command>`. Passwords are read from a prompt or an environment variable, never argv.
 - **Rationale**: FR-008, FR-010; no admin role or UI is needed.
+- **Phase boundary**: This CLI is deferred beyond Phase 2; only the environment-seeded default account is
+  available in production during the initial server-auth release.
 
 ## Decision: Client approach
 
@@ -99,3 +129,17 @@
 
 OWASP Top 10 mapped: A01 access control, A02 crypto failures, A04 insecure design, A05 misconfiguration,
 A07 identification and authentication failures, A09 logging. CSRF relies on `SameSite=lax` from 013.
+
+## Phase 2 operational behavior
+
+- Authentication events record event type, timestamp, outcome, source IP, request ID, and account ID when
+  known. Passwords and session IDs are never recorded. Use the structured logging and redaction rules in
+  feature 011.
+- If the account database or server-side session store is unavailable, login and session validation fail
+  closed with a service-unavailable response. Never fall back to the Phase 1 client demo marker.
+
+## Phase 2 scope boundary
+
+The login, current-user, and logout endpoints use the server-side session. The client route guard uses
+the current-user endpoint and does not trust local demo state. Existing family-data endpoints remain
+callable without a session in this phase; API authorization and tree ownership must be implemented later.

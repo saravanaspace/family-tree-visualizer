@@ -5,6 +5,7 @@ import type { FamilyMember, FamilyTreeData } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import AddMemberModal from '@/components/add-member-modal';
 import EditMemberModal from '@/components/edit-member-modal';
 import ConnectMembersModal from '@/components/connect-members-modal';
@@ -24,6 +25,7 @@ import { useViewportPersist } from './hooks/useViewportPersist';
 import { useCollapsed } from './hooks/useCollapsed';
 import { useExport } from './hooks/useExport';
 import { useTreeShortcuts } from './hooks/useTreeShortcuts';
+import { useLocation } from 'wouter';
 import { alignBoxes, distributeBoxes, type AlignMode } from './lib/align';
 import { EMPTY_FILTERS, highlightFromFilters, treeStats, type TreeFilters } from './lib/filter';
 import { focusSet } from './lib/focus';
@@ -41,6 +43,8 @@ const ADD_TYPE: Record<QuickAddKind, string> = {
 
 function Workspace({ tree }: { tree: FamilyTreeData }) {
   const { toast } = useToast();
+  const { signOut } = useAuth();
+  const [, navigate] = useLocation();
   const rf = useReactFlow();
   const actions = useTreeActions(tree);
   const { settings, update: updateSettings } = useCanvasSettings();
@@ -299,6 +303,14 @@ function Workspace({ tree }: { tree: FamilyTreeData }) {
             onSettingsChange={updateSettings}
             onOpenPalette={() => setPaletteOpen(true)}
             onExport={(f) => void doExport(f)}
+            onSignOut={async () => {
+              try {
+                await signOut();
+                navigate('/login');
+              } catch {
+                toast({ title: "Couldn't sign out", description: "The server session is still active. Try again.", variant: "destructive" });
+              }
+            }}
             exporting={exporting}
           />
           {view === 'tree' && (

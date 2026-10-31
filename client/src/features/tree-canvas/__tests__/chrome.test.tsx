@@ -23,7 +23,7 @@ const toolbarProps = () => ({
 const topBarProps = () => ({
   view: 'tree' as const, onViewChange: vi.fn(), filters: EMPTY_FILTERS, onFiltersChange: vi.fn(),
   stats: { members: 8, generations: 4, couples: 2 }, settings: DEFAULT_SETTINGS, onSettingsChange: vi.fn(),
-  onOpenPalette: vi.fn(), onExport: vi.fn(), exporting: false,
+  onOpenPalette: vi.fn(), onExport: vi.fn(), onSignOut: vi.fn(), exporting: false,
 });
 
 describe('LeftToolbar', () => {
@@ -102,6 +102,13 @@ describe('TopBar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Export' }));
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Export as SVG' }));
     expect(p.onExport).toHaveBeenCalledWith('svg');
+  });
+
+  it('fires sign out', async () => {
+    const p = topBarProps();
+    render(<TopBar {...p} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(p.onSignOut).toHaveBeenCalled();
   });
 
   it('has no axe violations', async () => {

@@ -4,7 +4,8 @@
 
 **Created**: 2026-10-31
 
-**Status**: Draft
+**Status**: Draft — Phase 1 UI flow and Phase 2 server-side sign-in implemented; API authorization and tree
+ownership remain planned.
 
 **Input**: User description: "basic authentication and authorization. create a simple login page for
 the app with username password for now and extended to google, apple oauth and email+otp option for
@@ -40,6 +41,72 @@ future. all family trees are linked to a user for now."
   separate tabs on different trees work; ownership is verified on every request.
 - Q: Is CSRF protection specified here? → A: No; cookie hardening (including SameSite) is covered by 013
   and reused.
+- Q: What is the first implementation step, and can it defer API authorization? → A: Phase 1 is a UI-only
+  login flow for the default user, followed by the existing family-tree page and logout. API authorization
+  and the remaining authentication requirements are later phases.
+- Q: For the first server-side username/password phase, which accounts can sign in? → A: Only the
+  environment-seeded default account; operator CLI account management is deferred.
+- Q: What password rules apply to the environment-seeded default account? → A: Passwords must be
+  12–256 characters with no composition requirements.
+- Q: What source-based login limit should apply in the first server-auth phase, and how should the client
+  address be determined? → A: Limit each client IP to 20 attempts per 15 minutes; trust forwarded
+  addresses only from configured proxies.
+- Q: If the account database or server-side session store is unavailable during login or session
+  validation, what should the app do? → A: Fail closed with a service-unavailable message and never fall
+  back to the UI-only demo.
+- Q: Which details should be recorded for login success/failure and logout events? → A: Record event type,
+  timestamp, account ID when known, outcome, source IP, and request ID; never record passwords or session
+  IDs.
+
+## Delivery Phases
+
+The requirements and user stories below describe the complete feature target. Delivery is staged so the
+login experience can be introduced before the server-side identity and authorization work.
+
+### Phase 1 — First login UI
+
+- Show a login page before the family-tree page.
+- Use the fixed username `default` and accept any non-empty password as a demo transition; do not verify
+  or persist the password.
+- Represent the signed-in user as Default User using a tab-scoped client demo-session marker.
+- Allow the user to reach the existing family-tree page and sign out back to login.
+- Display a clear notice that this phase does not authenticate users or protect family data or API
+  requests.
+
+Phase 1 is only a navigation/UI prototype. The original authentication, server-side session, ownership,
+tree-management, migration, and account-administration requirements remain planned for subsequent
+phases. Until those phases are delivered, the application must not claim that family data is protected.
+The security checklist remains a review artifact for the planned full authentication scope; its unchecked
+items are not waived by implementing Phase 1.
+
+### Phase 2 — Server-side username/password sign-in and sessions
+
+- Verify the environment-seeded default account's username and password on the server.
+- Keep sessions server-side, persist them across reloads, and support sign-out and expiry.
+- Do not add general account administration or CLI account-management commands in this phase.
+- Use automated test fixtures to create several accounts for multi-user authentication tests; do not
+  ship shared test credentials or seed test accounts into production.
+- Demo mode (`npm run dev:demo`, which refuses `NODE_ENV=production`) seeds documented, public demo
+  accounts into in-memory account and session stores; normal and production startup never seed them.
+- API authorization and tree ownership remain deferred; this phase does not yet protect family-data
+  endpoints from direct requests.
+
+**Phase 2 acceptance criteria**:
+
+- The configured default account can sign in; unknown, incorrect, and disabled credentials return the same
+  generic denial, with scrypt verification and no credentials in logs or responses.
+- Five consecutive username failures cause a 15-minute lock; a source IP is limited to 20 attempts per
+  15 minutes, and forwarded addresses are honored only from configured proxies.
+- A successful login creates a regenerated server-side session that survives reload; logout invalidates it.
+- If account or session storage is unavailable, auth endpoints fail closed with 503 and never accept the
+  Phase 1 browser marker.
+- Automated tests use multiple isolated fixture accounts. No test accounts or passwords are seeded in
+  normal or production startup.
+- Phase 2 records sign-in success/failure and sign-out events; access-denied event coverage is completed
+  with the later protected-route phase tracked in `tasks.md` (T058).
+
+Phase 2 does not satisfy FR-001, FR-011–FR-015, FR-020, or SC-001–SC-004 for family-data APIs and tree
+ownership. Those full-feature requirements remain for the later authorization and migration phases.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -149,6 +216,8 @@ can present additional sign-in options without altering sessions or ownership ru
 - Username comparison is case-insensitive; leading/trailing whitespace is ignored.
 - Disabled account: sign-in is refused with the same generic message and existing sessions end.
 - Signed in on multiple devices: each session is independent; signing out one does not end the others.
+- Authentication database or session-store outage: login and session validation fail closed with a
+  service-unavailable response; the application does not treat the UI-only demo marker as authentication.
 - Session expires mid-edit: user is sent to login; unsaved changes are not silently accepted as
   authenticated.
 - Direct links to a tree the user does not own show the same "not found" outcome as a nonexistent tree.
@@ -160,12 +229,15 @@ can present additional sign-in options without altering sessions or ownership ru
 ### Functional Requirements
 
 - **FR-001**: System MUST require authentication for all app pages and all family data access, except the
-  login page.
+  login page. Phase 2 delivers the browser login gate but does not yet satisfy this requirement for direct
+  family-data API requests; API authorization is deferred to a later phase.
 - **FR-002**: System MUST provide a login page accepting username and password.
 - **FR-003**: System MUST deny invalid credentials with a single generic message that does not reveal
   whether the username exists.
-- **FR-004**: System MUST lock sign-in for an account for 15 minutes after 5 consecutive failures, and
-  apply a per-source attempt limit, with a clear message. Lockout MUST never be permanent.
+- **FR-004**: System MUST lock sign-in for a username for 15 minutes after 5 consecutive failures, and
+  limit each client IP to 20 sign-in attempts per 15 minutes. Forwarded client addresses MUST be trusted
+  only when received from configured proxies. Limits MUST be temporary and MUST NOT permanently lock
+  sign-in.
 - **FR-005**: System MUST NOT store or log passwords in readable form; stored credentials MUST be
   protected with a modern, deliberately slow, salted one-way scheme.
 - **FR-006**: System MUST maintain a session after sign-in that persists across reloads, expires after a
@@ -192,8 +264,10 @@ can present additional sign-in options without altering sessions or ownership ru
 - **FR-014**: System MUST assign newly created trees to the signed-in user, never to a user supplied by
   the client.
 - **FR-015**: System MUST migrate all pre-existing tree data to the seeded default owner without loss.
-- **FR-016**: System MUST record sign-in success/failure, sign-out, and access-denied events without
-  recording passwords.
+- **FR-016**: System MUST record sign-in success/failure, sign-out, and access-denied events with event
+  type, timestamp, outcome, source IP, and request ID; include the account ID when known. Events MUST NOT
+  record passwords or session IDs and MUST follow the structured logging and redaction requirements in
+  feature 011.
 - **FR-017**: System MUST model an account separately from its sign-in method so Google, Apple, and
   email+one-time-code methods can be added later without changing ownership or session behaviour.
 - **FR-018**: The login page MUST be responsive and keyboard/screen-reader accessible, with labelled
@@ -203,6 +277,9 @@ can present additional sign-in options without altering sessions or ownership ru
 - **FR-021**: The active tree MUST be identified by a tree ID in the page address. A page address naming a
   tree the user does not own MUST show the same "not found" outcome as a nonexistent tree, and the app
   root MUST open the user's tree directly if they own exactly one, otherwise show the tree list.
+- **FR-022**: If the account database or server-side session store is unavailable, sign-in and session
+  validation MUST fail closed with a service-unavailable response; the system MUST NOT fall back to
+  client-side demo state.
 
 ### Key Entities
 
@@ -236,7 +313,8 @@ can present additional sign-in options without altering sessions or ownership ru
   to others'. Roles, invitations, and public sharing are deferred to 003.
 - Account creation, password reset, and disabling are operator command-line tasks in this phase;
   self-service password change/reset and any in-app admin screen are out of scope.
-- Password strength rules for operator-set passwords: minimum length 12; no composition rules.
+- Password strength rules for the environment-seeded default account and later operator-set passwords:
+  minimum length 12, maximum length 256, and no composition rules.
 - Session lifetime defaults: 7 days idle and 30 days absolute (long editing sessions are common); both
   are configurable.
 - Google, Apple, and email+OTP sign-in, account linking, multi-factor authentication, and 003 group

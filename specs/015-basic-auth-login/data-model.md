@@ -1,6 +1,10 @@
-# Phase 1 Data Model: Basic Authentication and Authorization
+# Planned Data Model: Basic Authentication and Authorization
 
-Defined in `shared/schema.ts` via Drizzle; migration in `migrations/0002_auth_and_trees.sql`.
+Phase 1 (the UI-only login flow) adds no database entities, shared data schemas, or migrations. The model
+below separates the Phase 2 server sign-in entities from later tree-ownership entities.
+
+Phase 2 entities are defined in `shared/schema.ts` via Drizzle and added by the additive
+`migrations/0002_authentication.sql` migration. Later ownership work will use a separate migration.
 
 ## New entities
 
@@ -16,14 +20,7 @@ Defined in `shared/schema.ts` via Drizzle; migration in `migrations/0002_auth_an
 - `type` enum `password` (future: `google`, `apple`, `email_otp`)
 - `identifier` varchar(255): the username for `password`; provider subject or email later
 - `secretHash` text nullable: scrypt string for `password`
-- `failedAttempts` int default 0, `lockedUntil` timestamp nullable
 - Unique (`type`, `identifier`); one `password` credential per user
-
-### Family Tree (`family_trees`)
-- `id` serial PK
-- `ownerId` FK users (restrict delete), indexed
-- `name` varchar(100)
-- `createdAt`, `updatedAt`
 
 ### Login Attempt (`login_attempts`)
 - `username` varchar(50) PK (normalized; includes unknown names)
@@ -31,11 +28,18 @@ Defined in `shared/schema.ts` via Drizzle; migration in `migrations/0002_auth_an
 - Used so lockout behaves identically for unknown and known usernames.
 
 ### Session (`user_sessions`)
-- Managed by the session store: `sid` PK, `sess` json, `expire` timestamp (indexed).
-- The session payload holds `userId` and `createdAt` (for absolute lifetime). Sessions of a user are found
-  by `sess->>'userId'` so disabling an account can delete them.
+- Managed by `connect-pg-simple`: `sid` PK, `sess` json, `expire` timestamp (indexed).
+- The session payload holds `userId` and `createdAt` (for absolute lifetime).
 
-## Changes to existing tables
+## Later tree-ownership entities
+
+### Family Tree (`family_trees`)
+- `id` serial PK
+- `ownerId` FK users (restrict delete), indexed
+- `name` varchar(100)
+- `createdAt`, `updatedAt`
+
+### Changes to existing tables (later phase)
 
 - `family_members`, `relationships`, `family_events` gain `treeId` integer NOT NULL FK `family_trees`
   (cascade delete), indexed.
@@ -44,33 +48,33 @@ Defined in `shared/schema.ts` via Drizzle; migration in `migrations/0002_auth_an
 
 ## Relationships
 
-- User 1..N Credential; User 1..N Family Tree; Family Tree 1..N Member, Relationship, Event.
+- Phase 2: User 1..N Credential and User 1..N Session.
+- Later: User 1..N Family Tree; Family Tree 1..N Member, Relationship, Event.
 
 ## Invariants
 
-- Every tree has exactly one owner; every member, relationship, and event belongs to exactly one tree.
+- Later: Every tree has exactly one owner; every member, relationship, and event belongs to exactly one tree.
 - A relationship's two members and every event member belong to the same tree as the relationship/event.
-- A disabled user has no valid sessions and cannot sign in.
+- A disabled user has no valid sessions and cannot sign in (account disabling is later operator tooling).
 - Usernames are unique case-insensitively.
 - A tree owner ID is never accepted from the client.
 
 ## State transitions
 
-- User: `active` to `disabled` (CLI) and back to `active` (CLI).
-- Credential lock: `failedAttempts` reaches 5, so `lockedUntil` is now plus 15 minutes; a success or an
-  expired lock resets the counters.
+- User: `active` to `disabled` (operator tooling in a later phase) and back to `active`.
+- Login attempt: five consecutive failures for a normalized username set `lockedUntil` to 15 minutes from
+  now; a successful login or expired lock resets the counter.
 
 ## Validation (Zod, in `shared/`)
 
-- `loginSchema`: `username` trimmed, 1..50 chars; `password` 1..256 chars.
+- `loginSchema`: `username` trimmed, 1..50 chars; `password` 12..256 chars.
 - `createTreeSchema` / `renameTreeSchema`: `name` trimmed, 1..100 chars.
 - CLI password rule: minimum 12 characters, no composition rules.
 
-## Migration outline
+## Phase 2 migration outline
 
-1. Create new tables and enums.
-2. Insert the default owner user and one tree named "Family Tree" (only if any family rows exist, or always
-   create the owner).
-3. Add `tree_id` nullable, backfill to that tree, set NOT NULL, add FKs and indexes.
-4. Replace the relationships unique index.
-5. Rollback: drop `tree_id` columns and new tables (data in family tables is retained).
+1. Add the user, credential, and login-attempt tables/indexes; do not modify family data.
+2. Create/use `user_sessions` for the PostgreSQL session store.
+3. Seed the default account at startup; never overwrite an existing password.
+4. Later tree-ownership migration adds `family_trees`, backfills existing rows, adds tree FKs, and changes
+   the relationship unique index. That migration is not part of Phase 2.

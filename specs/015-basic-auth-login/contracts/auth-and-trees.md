@@ -1,22 +1,32 @@
 # API Contract: Authentication and Trees
 
+Phase 2 implements the authentication endpoints. Tree and tree-scoped contracts below describe later work;
+existing family-data routes remain unauthenticated until API authorization is implemented. Phase 1 added
+client-side navigation only: username `default` plus any non-empty password entered the existing tree page.
+That demo flow did not verify credentials or restrict direct API requests.
+
 Base path `/api`. Session cookie is `httpOnly`, `secure` in production, `sameSite: lax` (013 cookie policy).
-Errors use the 009 shape `{ "message": string, "error"?: ... }`. Unauthenticated requests to any route other
-than `POST /api/auth/login` and `GET /api/auth/me` get `401`.
+Errors use the 009 shape `{ "message": string, "error"?: ... }`. The family route 401 requirement applies
+only after the later API-authorization phase.
 
 ## Authentication
 
 | Method | Path | Purpose | Success | Errors |
 |--------|------|---------|---------|--------|
-| POST | `/api/auth/login` | Sign in with username and password | 200 `{ user }` | 400 invalid body; 401 generic "Invalid username or password"; 429 locked or rate limited (with `Retry-After`) |
-| POST | `/api/auth/logout` | End the current session | 204 | none (idempotent) |
-| GET | `/api/auth/me` | Current user | 200 `{ user }` | 401 |
+| POST | `/api/auth/login` | Sign in with username and password | 200 `{ user }` | 400 invalid body; 401 generic "Invalid username or password"; 429 locked or rate limited (with `Retry-After`); 503 auth storage unavailable |
+| POST | `/api/auth/logout` | End the current session | 204 | 503 auth storage unavailable |
+| GET | `/api/auth/me` | Current user | 200 `{ user }` | 401; 503 auth storage unavailable |
 
 - Login body: `{ "username": string, "password": string }`. A new session ID is issued on success.
 - `user`: `{ id, username, displayName }`. Never includes credential data.
 - 401 is identical for unknown user, wrong password, and disabled account.
 - 429 is returned for locked accounts, including unknown usernames locked by repeated attempts, with the same
   message and no indication whether the account exists.
+- Passwords must be 12–256 characters. Unknown usernames use a dummy password verification.
+- Successful login regenerates the session ID; server-side sessions use configured idle and absolute
+  lifetimes.
+- Source-based throttling uses the direct connection address unless `TRUSTED_PROXIES` explicitly
+  configures the forwarding proxy IPs/CIDRs.
 
 ## Trees
 

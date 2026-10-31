@@ -1,7 +1,42 @@
-import { pgTable, text, serial, integer, real, timestamp, date, boolean, varchar, primaryKey, uniqueIndex, index } from "drizzle-orm/pg-core";
-import { relations } from 'drizzle-orm';
+import { pgTable, text, serial, integer, real, timestamp, date, boolean, varchar, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { relations, sql } from 'drizzle-orm';
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: varchar("username", { length: 50 }).notNull(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  usernameLowerIdx: uniqueIndex("users_username_lower_idx").on(sql`lower(${table.username})`),
+  statusCheck: check("users_status_check", sql`${table.status} IN ('active', 'disabled')`),
+}));
+
+export const credentials = pgTable("credentials", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 30 }).notNull(),
+  identifier: varchar("identifier", { length: 255 }).notNull(),
+  secretHash: text("secret_hash"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  identifierIdx: uniqueIndex("credentials_type_identifier_idx").on(table.type, table.identifier),
+  userTypeIdx: uniqueIndex("credentials_user_type_idx").on(table.userId, table.type),
+  typeCheck: check("credentials_type_check", sql`${table.type} IN ('password', 'google', 'apple', 'email_otp')`),
+}));
+
+export const loginAttempts = pgTable("login_attempts", {
+  username: varchar("username", { length: 50 }).primaryKey(),
+  failedCount: integer("failed_count").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  failedCountCheck: check("login_attempts_failed_count_check", sql`${table.failedCount} >= 0`),
+}));
 
 export const familyMembers = pgTable("family_members", {
   id: serial("id").primaryKey(),
@@ -191,3 +226,17 @@ export type FamilyTreeData = {
   relationships: Relationship[];
   events: FamilyEvent[];
 };
+
+export const loginSchema = z.object({
+  username: z.string().trim().min(1).max(50),
+  password: z.string().min(12).max(256),
+});
+
+export const userSchema = z.object({
+  id: z.number().int().positive(),
+  username: z.string().min(1).max(50),
+  displayName: z.string().min(1).max(100),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+export type AuthUser = z.infer<typeof userSchema>;

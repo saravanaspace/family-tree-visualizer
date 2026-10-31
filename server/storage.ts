@@ -34,14 +34,18 @@ const queryClient = postgres(process.env.DATABASE_URL || 'postgres://postgres:po
 const defaultDb = drizzle(queryClient);
 
 // Helper function to convert Date fields in objects
-function prepareDates<T extends object>(obj: T): T {
+type DatesAsStrings<T> = {
+  [K in keyof T]: Date extends T[K] ? Exclude<T[K], Date> | string : T[K];
+};
+
+function prepareDates<T extends object>(obj: T): DatesAsStrings<T> {
   const result = { ...obj };
   for (const [key, value] of Object.entries(result)) {
     if (value instanceof Date) {
       (result as any)[key] = value.toISOString().split('T')[0];
     }
   }
-  return result;
+  return result as DatesAsStrings<T>;
 }
 
 // Helper function to parse date strings back to Date objects
@@ -231,7 +235,7 @@ export class PostgresStorage implements Storage {
     }
     // Use a raw SQL string for the array overlap query
     const arrayString = `ARRAY[${memberIds.join(',')}]::int[]`;
-    const events = await this.db.execute<FamilyEvent[]>(
+    const events = await this.db.execute<FamilyEvent>(
       sql.raw(`SELECT * FROM family_events WHERE member_ids && ${arrayString}`)
     );
     return events.map(e => parseDates(e));

@@ -258,7 +258,7 @@ async function seed() {
     console.log('✅ All seed data inserted successfully!');
   } catch (error) {
     console.error('❌ Error seeding data:', error);
-    if (error.stack) {
+    if (error instanceof Error && error.stack) {
       console.error('Stack trace:', error.stack);
     }
     process.exit(1);

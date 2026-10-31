@@ -1,4 +1,4 @@
-import { Clock, Download, Filter, Search, Settings2, TreePine } from 'lucide-react';
+import { Clock, Download, Filter, LogOut, Search, Settings2, TreePine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ interface Props {
   onSettingsChange: (patch: Partial<CanvasSettings>) => void;
   onOpenPalette: () => void;
   onExport: (format: ExportFormat) => void;
+  onSignOut: () => void;
   exporting: boolean;
 }
 
@@ -95,6 +96,10 @@ export function TopBar(p: Props) {
           <div className="flex items-center justify-between"><Label htmlFor="set-map">Minimap</Label><Switch id="set-map" checked={p.settings.minimap} onCheckedChange={(minimap) => p.onSettingsChange({ minimap })} /></div>
         </PopoverContent>
       </Popover>
+
+      <Button variant="outline" size="icon" className="sm:w-auto sm:px-3" onClick={p.onSignOut} aria-label="Sign out">
+        <LogOut className="h-4 w-4" /><span className="hidden sm:inline">Sign out</span>
+      </Button>
     </header>
   );
 }

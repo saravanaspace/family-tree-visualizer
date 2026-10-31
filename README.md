@@ -18,6 +18,7 @@ An interactive web application for creating, visualizing, and managing family tr
 - **Real-time Updates**: Changes are reflected immediately using React Query
 - **Persistent Storage**: PostgreSQL database for reliable data storage
 - **Data Seeding**: Sample family data available for testing and demonstration
+- **Username/password login**: Credentials are verified on the server and sessions are stored in PostgreSQL. Family-data API authorization is not yet implemented.
 
 ## Tech Stack
 
@@ -74,10 +75,16 @@ An interactive web application for creating, visualizing, and managing family tr
      DATABASE_URL="postgres://postgres:postgres@localhost:5432/familytree"
      ```
 
-4. Run database migrations:
+   Also set `SESSION_SECRET` (at least 32 random characters), `DEFAULT_OWNER_USERNAME`, and
+   `DEFAULT_OWNER_PASSWORD` (12–256 characters) in `.env`.
+
+4. Create/update the family schema and apply the additive authentication migration:
    ```bash
    npm run db:push
+   npm run db:migrate
    ```
+   `db:migrate` applies only `0002_authentication.sql`; it does not run the destructive legacy
+   `0001_initial_schema.sql`. For an existing database, back it up and run `npm run db:migrate`.
 
 5. (Optional) Seed sample data:
    ```bash
@@ -91,16 +98,41 @@ An interactive web application for creating, visualizing, and managing family tr
 
 7. Open http://localhost:5000 in your browser
 
+### Username/password sign-in
+
+The configured default account is created only if it does not already exist. In development, when
+`DEFAULT_OWNER_PASSWORD` is unset, the server generates and prints a password once. Production requires
+`SESSION_SECRET`, `DEFAULT_OWNER_USERNAME`, and `DEFAULT_OWNER_PASSWORD`; changing the environment
+password does not overwrite an existing credential.
+
+Sessions use `SESSION_IDLE_DAYS` (default 7) and `SESSION_MAX_DAYS` (default 30). Set
+`TRUSTED_PROXIES` to a comma-separated list of trusted proxy IPs/CIDRs only when deployed behind those
+proxies; forwarded client addresses are ignored otherwise.
+
+**Important**: Login protects the browser UI only in this phase. Direct family-data API requests remain
+unauthenticated until the later API-authorization phase. Do not rely on this release to protect family
+data from direct API access.
+
 ## Development
 
-### Demo mode (no database)
+### Demo family data
 ```bash
 npm run dev:demo
 ```
-Serves a small in-memory sample family (8 members, 3 generations, relationships and events) with no
-database. Changes are not saved; restart, or call `POST /api/demo/reset` from the same machine
-(loopback only), to restore the original data. Demo mode refuses to start when `NODE_ENV=production`.
-Staging and production keep using Postgres via `npm run dev` / `npm start`.
+Serves a small in-memory sample family (8 members, 3 generations, relationships and events); family data
+changes are not saved. Demo mode needs no database: sign-in accounts and sessions are also in memory and
+the following demo accounts are seeded (and printed at startup):
+
+| Username   | Password            | Notes                          |
+|------------|---------------------|--------------------------------|
+| `demo`     | `demo-password`     | Active                         |
+| `alice`    | `alice-password`    | Active                         |
+| `bob`      | `bob-password-1`    | Active                         |
+| `disabled` | `disabled-password` | Disabled; sign-in is refused   |
+
+These credentials are public and exist only in demo mode. Demo mode refuses to start when
+`NODE_ENV=production`, and `npm run dev` / `npm start` never seed them. Staging and production use
+PostgreSQL for both auth and family data.
 
 ### Testing
 Run the test suite:
