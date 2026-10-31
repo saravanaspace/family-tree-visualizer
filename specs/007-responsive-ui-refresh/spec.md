@@ -23,10 +23,11 @@ reminders, and Q&A are tracked as separate features.
 
 - Q: Does the redesign replace or extend this spec? → A: Extend this spec (nothing is built yet);
   the previous fixed desktop sidebar requirement is superseded.
-- Q: Default wheel/pan scheme? → A: Whiteboard scheme (scroll pans, Ctrl/Cmd+scroll or pinch zooms);
-  a setting offers an alternate scheme where scroll zooms.
-- Q: How are couples and their children shown? → A: Children visually descend from a junction
-  point between the partners; this is derived from existing relationships, with no new stored data.
+- Q: Default wheel/pan scheme? → A: Scroll zooms at the pointer and dragging empty canvas pans
+  (revised after demo feedback; originally scroll-pans/marquee); a setting offers a whiteboard scheme
+  where scroll pans and Ctrl/Cmd+scroll zooms. Shift+drag draws a marquee selection.
+- Q: How are couples and their children shown? → A: Partners link side to side through a junction
+  dot between their facing edges, and children descend from that junction; this is derived from existing relationships, with no new stored data.
 - Q: Undo/redo scope? → A: Per-session, this-browser only; lost on reload; not shared between users.
 - Q: Deleting a member? → A: No blocking confirmation; deletion is immediately undoable instead.
 - Q: Snapping? → A: Off by default; toggle in toolbar; holding Shift temporarily inverts it.
@@ -197,7 +198,7 @@ for basic navigation and dragging.
 **Acceptance Scenarios**:
 
 1. **Given** a tree, **When** the user chooses Auto-arrange, **Then** members are laid out
-   hierarchically with partners adjacent, positions animate (unless reduced motion), and the
+   hierarchically with partners adjacent and every child on a lower row than its parents, positions animate (unless reduced motion), and the
    result is saved as one operation.
 2. **Given** snapping is enabled (or Shift is held), **When** a member is dragged, **Then** it
    snaps to a 20px grid and alignment guides appear against nearby members; snapping is off by default.
@@ -278,8 +279,8 @@ collapse a branch, reload to confirm the view is restored, and export a PNG and 
 - **FR-011**: The canvas MUST behave as a fluid infinite surface: pan and zoom MUST feel smooth,
   zoom MUST center on the pointer or pinch focal point. Inertial momentum is not required.
 - **FR-012**: The canvas MUST support familiar whiteboard input mappings across mouse, trackpad,
-  and touch: scroll to pan, Ctrl/Cmd+scroll to zoom, pinch to zoom, and space-drag or
-  middle-button drag to pan; dragging on empty canvas draws a marquee selection.
+  and touch: scroll to zoom at the pointer, pinch to zoom, and drag on empty canvas (or
+  space-drag / middle-button drag) to pan; Shift+drag on empty canvas draws a marquee selection.
 - **FR-013**: The system MUST provide zoom controls showing the current zoom percentage with
   zoom in, zoom out, reset to 100%, zoom-to-fit-all, and zoom-to-fit-selection actions.
 - **FR-014**: The system MUST provide a minimap/overview on larger screens showing the current
@@ -312,7 +313,7 @@ collapse a branch, reload to confirm the view is restored, and export a PNG and 
   at interaction time with an inline explanation; the server remains the source of truth.
 - **FR-025**: Relationship lines MUST be selectable for edit/delete, styled by type/status
   (preserving existing color and dash conventions), and children of a couple MUST descend from
-  a junction between the partners, derived from existing relationships.
+  a junction between the partners' facing edges, derived from existing relationships.
 - **FR-026**: The system MUST provide one-click quick-add (parent, child, partner) on the selected
   member.
 - **FR-027**: The system MUST provide Auto-arrange producing a hierarchical layout with partners
@@ -332,7 +333,7 @@ collapse a branch, reload to confirm the view is restored, and export a PNG and 
   scheme) in this browser and fit the tree to view on first visit.
 - **FR-033**: The system MUST export the full tree as PNG and SVG.
 - **FR-034**: The system MUST offer a setting to switch wheel behavior between the default
-  whiteboard scheme (scroll pans) and an alternate scheme (scroll zooms).
+  scheme (scroll zooms) and a whiteboard scheme (scroll pans, Ctrl/Cmd+scroll zooms).
 - **FR-035**: Members MUST be keyboard focusable; arrow keys nudge the selected member (Shift for
   larger steps), Enter opens the inspector, Delete removes with undo, and every toolbar control
   MUST have an accessible name and tooltip.
@@ -359,8 +360,8 @@ are derived or client-side only. Member positions are batch-updatable as one ope
   without assistance in usability testing.
 - **SC-006**: A user can locate and frame any member in a 100-member tree using zoom-to-fit
   and/or the minimap in under 10 seconds.
-- **SC-008**: Standard whiteboard input mappings (scroll-pan, Ctrl/Cmd+scroll-zoom, pinch-zoom,
-  space/middle-drag-pan) work on mouse, trackpad, and touch in testing.
+- **SC-008**: Standard whiteboard input mappings (scroll-zoom, drag-pan, pinch-zoom,
+  Shift-drag marquee) work on mouse, trackpad, and touch in testing.
 - **SC-009**: Dragging a member keeps it under the pointer (within 2px) at every zoom level
   from 10% to 400% in testing.
 - **SC-010**: Drag and zoom sustain at least 60 fps with 200 members and at least 30 fps with 500.

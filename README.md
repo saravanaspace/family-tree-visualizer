@@ -115,36 +115,41 @@ npm run test:coverage
 
 ## Key Components
 
-- **FamilyTreeCanvas**: Main visualization component for the tree view
+- **TreeWorkspace** (`client/src/features/tree-canvas`): React Flow canvas with floating chrome (top bar, left toolbar, zoom panel, inspector, command palette)
+- **PersonNode / UnionNode / RelationshipEdge**: Canvas visuals with zoom-based detail levels
 - **TimelineView**: Alternative chronological view of family events
-- **SidebarControls**: Control panel for managing family members and relationships
-- **ZoomControls**: Interface for controlling the tree view zoom level
-- **AddMemberModal**: Form for adding new family members
-- **ConnectMembersModal**: Interface for creating relationships between members
+- **AddMemberModal / EditMemberModal / ConnectMembersModal**: Forms for members and relationships
 
 ## Features in Detail
 
-### Member Management
-- Add new family members with details
-- Specify member types (father, mother, spouse, child)
-- Connect members through relationships
-- Delete existing members
+### Canvas
+- Couples are linked side to side through a junction dot between the partners; children drop from it
+- Drag cards (or a Shift+drag marquee selection) to move them; each gesture is saved as one batch
+- Drag from a card's handle to another card to connect (bottom handle suggests parent, top child, sides partner); release on empty canvas to add a person there
+- Undo/redo for moves, connects, link edits, adds and deletes (up to 100 steps)
+- Auto-arrange (children always below parents; also runs once on first load if cards overlap), align and distribute, optional snap-to-grid (hold Shift to invert)
+- Semantic zoom (name only, name + dates, full details), minimap, collapse branches, focus on a branch
+- Search, living/deceased and gender filters; export the whole tree as PNG or SVG
+- View, zoom and settings persist per browser
 
-### Visualization
-- Interactive drag-and-drop positioning
-- Automatic relationship line drawing
-- Zoom and pan controls
-- Auto-align feature for better organization
+### Shortcuts
+| Key | Action |
+| --- | --- |
+| Ctrl/Cmd+K or `/` | Command palette |
+| `F` / `0` | Fit tree / reset zoom to 100% |
+| Enter | Open details for the selected person |
+| Delete | Delete selection (with Undo toast) |
+| Arrows (Shift = 10px) | Nudge selection |
+| Ctrl/Cmd+Z, Shift+Z | Undo / redo |
+| Scroll wheel | Zoom at the pointer (switch to "Scroll pans" in Canvas settings) |
+| Drag on empty canvas, Space + drag, middle mouse | Pan |
+| Shift + drag on empty canvas | Marquee select |
 
 ### Timeline View
 - Chronological display of family events
-- Birth and marriage event tracking
-- Visual representation of family history
 
 ### Mobile Support
-- Responsive design
-- Touch-friendly controls
-- Collapsible sidebar for mobile devices
+- Bottom toolbar, bottom-sheet details, 44px touch handles, dialogs that scroll within the viewport
 
 ## Data Persistence
 

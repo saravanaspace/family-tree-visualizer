@@ -11,13 +11,16 @@ All Technical Context unknowns resolved. Format: Decision / Rationale / Alternat
   current bugs); keep custom canvas (rejected by grilling Q1).
 
 ## R-2 Wheel scheme
-- **Decision**: Default whiteboard scheme: `panOnScroll=true`, zoom on Ctrl/Cmd+wheel and pinch,
-  pan with Space/middle drag or hand tool. Setting switches to `zoomOnScroll` scheme. Stored in `localStorage`.
+- **Decision**: Default scheme (changed after demo feedback): `zoomOnScroll=true`, `panOnDrag` on empty
+  canvas, Shift+drag marquee (`selectionKeyCode="Shift"`). The "Scroll pans" setting switches to the
+  whiteboard scheme (`panOnScroll`). Stored in `localStorage`.
 - **Rationale**: Matches FR-012/FR-034 and trackpad expectations.
 
 ## R-3 Couple junction (union node)
 - **Decision**: Derive a client-only `UnionNode` per spouse relationship; parent-child edges
-  from a couple's shared children originate at the junction. Single parents link directly.
+  from a couple's shared children originate at the junction. Single parents link directly. Partners
+  connect side to side (facing handles) into a junction placed midway between their cards at card-centre
+  height, so a couple reads as one horizontal bar with children dropping from its midpoint.
 - **Rationale**: No schema change; replaces the old "midpoint if y within 20px" heuristic.
 - **Alternatives**: Persist unions table (migration, out of scope).
 

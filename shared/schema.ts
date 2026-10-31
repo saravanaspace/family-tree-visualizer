@@ -119,7 +119,7 @@ export const insertFamilyMemberSchema = createInsertSchema(familyMembers, {
 }).omit({ id: true, createdAt: true, updatedAt: true });
 
 export const insertRelationshipSchema = createInsertSchema(relationships, {
-  type: z.enum(['parent-child', 'spouse', 'adopted', 'step-parent']),
+  type: z.enum(['parent-child', 'spouse', 'adopted', 'step-parent', 'guardian']),
   subType: z.enum(['biological', 'adopted', 'step', 'foster', 'legal']).optional(),
   status: z.enum(['active', 'divorced', 'separated', 'widowed', 'deceased']).default('active'),
   startDate: dateTransform,
@@ -134,6 +134,49 @@ export const insertFamilyEventSchema = createInsertSchema(familyEvents, {
   date: dateTransform,
   memberIds: z.number().array().min(1),
 }).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Canvas workspace: batch position update and restore-after-delete payloads
+const coordinate = z.number().finite().min(-1_000_000).max(1_000_000);
+
+export const batchPositionsSchema = z.object({
+  positions: z.array(z.object({
+    id: z.number().int().positive(),
+    x: coordinate,
+    y: coordinate,
+  })).min(1).max(1000),
+}).refine(
+  ({ positions }) => new Set(positions.map((p) => p.id)).size === positions.length,
+  { message: "Duplicate member ids", path: ["positions"] },
+);
+
+const positiveId = z.number().int().positive();
+
+// Snapshots come from stored rows, where unset optional columns are null; treat those as absent.
+const dropNulls = (value: unknown) =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).filter(([, v]) => v !== null))
+    : value;
+
+export const restoreMemberSchema = z.object({
+  member: z.preprocess(dropNulls, insertFamilyMemberSchema.extend({ id: positiveId })),
+  relationships: z.array(z.preprocess(dropNulls, insertRelationshipSchema.and(z.object({ id: positiveId })))).max(500),
+  events: z.array(z.preprocess(dropNulls, insertFamilyEventSchema.and(z.object({ id: positiveId })))).max(500),
+}).superRefine((value, ctx) => {
+  const memberId = value.member.id;
+  value.relationships.forEach((r, i) => {
+    if (r.fromMemberId !== memberId && r.toMemberId !== memberId) {
+      ctx.addIssue({ code: "custom", message: "Relationship must reference the restored member", path: ["relationships", i] });
+    }
+  });
+  value.events.forEach((e, i) => {
+    if (!e.memberIds.includes(memberId)) {
+      ctx.addIssue({ code: "custom", message: "Event must include the restored member", path: ["events", i] });
+    }
+  });
+});
+
+export type BatchPositions = z.infer<typeof batchPositionsSchema>;
+export type RestoreMember = z.infer<typeof restoreMemberSchema>;
 
 // Type exports
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;

@@ -163,7 +163,7 @@ export default function ConnectMembersModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[100dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Connect Family Members</DialogTitle>
           <DialogDescription>
